@@ -1,0 +1,56 @@
+language: en
+words:
+  - oomol
+  - Hwnd
+  - lxss
+
+  # pkg/winapi
+  - winapi
+  - CLASSKEY
+  - IDLIST
+  - INVOKEIDLIST
+  - NOCLOSEPROCESS
+  - CONNECTNETDRV
+  - NOASYNC
+  - DDEWAIT
+  - DOENVSUBST
+  - ASYNCOK
+  - NOQUERYCLASSSTORE
+  - HMONITOR
+  - NOZONECHECKS
+  - WAITFORINPUTIDLE
+  - HINST
+  - SHELLEXECUTEINFO
+  - SHELLEXECUTEINFOW
+  - ACCESSDENIED
+  - DLLNOTFOUND
+  - ASSOCINCOMPLETE
+  - DDETIMEOUT
+  - DDEFAIL
+  - DDEBUSY
+  - NOASSOC
+  - xaevman
+dictionaries:
+  - companies
+  - softwareTerms
+  - misc
+  - typescript
+  - node
+  - rust
+  - golang
+  - html
+  - css
+  - bash
+  - docker
+  - fonts
+  - filetypes
+  - npm
+  - fullstack
+  - en_US
+  - en-gb
+ignorePaths:
+  - logs/
+  - out/
+  - vendor/
+  - CHANGELOG.md
+  - cspell.config.yml
