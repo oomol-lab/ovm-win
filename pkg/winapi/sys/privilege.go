@@ -21,8 +21,10 @@ func IsAdmin() bool {
 
 // RunAsAdminWait restarts the current process with admin privileges
 func RunAsAdminWait() error {
-	exe, _ := os.Executable()
-	cwd, _ := os.Getwd()
+	exe, cwd, err := currentEXEAndCWD()
+	if err != nil {
+		return fmt.Errorf("could not get current process executable and cwd: %w", err)
+	}
 
 	sei := &winapi.SHELLEXECUTEINFO{
 		FMask:       winapi.SEE_MASK_NOCLOSEPROCESS,
@@ -113,5 +115,48 @@ func parentExecutable() (path string, err error) {
 	}
 
 	return windows.UTF16ToString(buf[:]), nil
+}
 
+// currentEXEAndCWD returns the current process executable and current working directory.
+//
+// If the currently executing file is located in a UNC directory, when creating a subprocess,
+// a UNC path must also be used; otherwise, the params of the subprocess will not take effect.
+func currentEXEAndCWD() (exe, cwd string, err error) {
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(os.Getpid()))
+	if err != nil {
+		return "", "", fmt.Errorf("could not open current process: %v", err)
+	}
+	defer func() {
+		_ = windows.CloseHandle(h)
+	}()
+
+	buf := make([]uint16, syscall.MAX_LONG_PATH)
+	size := uint32(syscall.MAX_LONG_PATH)
+	if err := windows.QueryFullProcessImageName(h, 0, &buf[0], &size); err != nil {
+		return "", "", fmt.Errorf("could not query current full process image name: %v", err)
+	}
+
+	exeStr := windows.UTF16ToString(buf[:])
+	exeGo, _ := os.Executable()
+	cwdGo, _ := os.Getwd()
+
+	if !isUNC(exeStr) {
+		return exeGo, cwdGo, nil
+	}
+
+	uncCWD, err := winapi.WNetGetUniversalName(cwdGo)
+	if err != nil {
+		return "", "", fmt.Errorf("could not get universal name for current process: %v", err)
+	}
+
+	return exeStr, uncCWD, nil
+}
+
+func isSlash(c uint8) bool {
+	return c == '\\' || c == '/'
+}
+
+// isUNC reports whether path is a UNC path.
+func isUNC(path string) bool {
+	return len(path) > 1 && isSlash(path[0]) && isSlash(path[1])
 }
