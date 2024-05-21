@@ -10,17 +10,22 @@ import (
 	"unsafe"
 )
 
-const universalNameInfoLevel = 1
+// UNIVERSAL_NAME_INFO_LEVEL
+//
+// Ref: https://learn.microsoft.com/en-us/windows/win32/api/winnetwk/nf-winnetwk-wnetgetuniversalnamea#parameters
+const UNIVERSAL_NAME_INFO_LEVEL = 1
 
 type universalNameInfo struct {
 	universalName [syscall.MAX_LONG_PATH]uint16
 }
 
 // WNetGetUniversalName retrieves the Universal Naming Convention (UNC) path for a mapped drive.
+//
+// Ref: https://learn.microsoft.com/en-us/windows/win32/api/winnetwk/nf-winnetwk-wnetgetuniversalnamea
 func WNetGetUniversalName(lpLocalPath string) (result string, err error) {
 	var uni universalNameInfo
 	var bufferSize = uint32(unsafe.Sizeof(uni))
-	if r1, _, lastErr := wNetGetUniversalName.Call(CStr(lpLocalPath), uintptr(universalNameInfoLevel), uintptr(unsafe.Pointer(&uni)),
+	if r1, _, lastErr := wNetGetUniversalName.Call(CStr(lpLocalPath), uintptr(UNIVERSAL_NAME_INFO_LEVEL), uintptr(unsafe.Pointer(&uni)),
 		uintptr(unsafe.Pointer(&bufferSize))); r1 != 0 {
 		return "", lastErr
 	}
