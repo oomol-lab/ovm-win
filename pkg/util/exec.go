@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+
+	"github.com/oomol-lab/ovm-win/pkg/logger"
 )
 
 const (
@@ -14,11 +16,13 @@ const (
 	flagsCreateNoWindow = 0x08000000
 )
 
-func Silent(command string, args ...string) error {
+func Silent(log *logger.Context, command string, args ...string) error {
 	cmd := exec.Command(command, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: flagsCreateNoWindow}
 	cmd.Stdout = nil
 	cmd.Stderr = nil
+
+	log.Infof("Running command: %s %s", command, strings.Join(args, " "))
 	return cmd.Run()
 }
 

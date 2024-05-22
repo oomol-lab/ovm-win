@@ -7,6 +7,7 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
+	"github.com/oomol-lab/ovm-win/pkg/wsl"
 )
 
 var (
@@ -52,16 +53,23 @@ func main() {
 		exit(1)
 	}
 
-	if !opt.IsAdmin {
-		log.Info("Running as non-admin")
-		if err := sys.RunAsAdminWait(); err != nil {
-			log.Errorf("Failed to run as admin: %v", err)
-			exit(1)
+	if err := wsl.Install(opt, log); err != nil {
+		if wsl.IsNeedReboot(err) {
+			log.Info("Need reboot system")
+			exit(0)
 		}
-		log.Info("admin child process exited successfully")
+
+		log.Error(fmt.Sprintf("Failed to install WSL2: %v", err))
+		exit(1)
 	} else {
-		log.Info("Running as admin")
+		// If it is currently a child process, then its task has been completed, and we need to exit.
+		if opt.IsElevatedProcess {
+			exit(0)
+		}
 	}
+
+	log.Info("Done")
+	exit(0)
 
 }
 

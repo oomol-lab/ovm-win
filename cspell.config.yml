@@ -3,6 +3,7 @@ words:
   - oomol
   - Hwnd
   - lxss
+  - eerr
 
   # pkg/winapi
   - winapi
