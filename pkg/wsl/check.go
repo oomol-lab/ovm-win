@@ -6,6 +6,7 @@ package wsl
 import (
 	"path/filepath"
 
+	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/util"
 )
 
@@ -29,29 +30,29 @@ func existsKernel() bool {
 	return false
 }
 
-// IsInstalled Checks if the WSL2 is installed.
-func IsInstalled() bool {
+// isInstalled Checks if the WSL2 is installed.
+func isInstalled(log *logger.Context) bool {
 	// If the kernel file does not exist,
 	// it means that the current system has only enabled the Features without running wsl --update.
 	if !existsKernel() {
 		return false
 	}
 
-	if err := util.Silent(Find(), "--status"); err != nil {
+	if err := util.Silent(log, Find(), "--status"); err != nil {
 		return false
 	}
 
 	return true
 }
 
-// IsFeatureEnabled Checks if the WSL feature is enabled.
+// isFeatureEnabled Checks if the WSL feature is enabled.
 // At the same time, `set-default-version 2` will also be configured.
 // The following two features need to be enabled:
 //  1. `Microsoft-Windows-Subsystem-Linux`
 //  2. `VirtualMachinePlatform`
-func IsFeatureEnabled() bool {
+func isFeatureEnabled(log *logger.Context) bool {
 	// we cannot use the following methods for checking because these commands require administrative privileges.
 	// 	1.Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
 	// 	2.Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
-	return util.Silent(Find(), "--set-default-version", "2") == nil
+	return util.Silent(log, Find(), "--set-default-version", "2") == nil
 }
