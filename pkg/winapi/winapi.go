@@ -25,7 +25,7 @@ func init() {
 	// lib
 	shell32 = windows.NewLazySystemDLL("shell32.dll")
 	kernel32 = windows.NewLazySystemDLL("kernel32.dll")
-	mpr := windows.NewLazyDLL("mpr.dll")
+	mpr = windows.NewLazySystemDLL("mpr.dll")
 
 	// function
 	shellExecuteEx = shell32.NewProc("ShellExecuteExW")

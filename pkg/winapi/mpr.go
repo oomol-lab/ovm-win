@@ -4,10 +4,11 @@
 package winapi
 
 import (
-	"strings"
+	"errors"
 	"syscall"
-	"unicode/utf16"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 // UNIVERSAL_NAME_INFO_LEVEL
@@ -16,27 +17,26 @@ import (
 const UNIVERSAL_NAME_INFO_LEVEL = 1
 
 type universalNameInfo struct {
-	universalName [syscall.MAX_LONG_PATH]uint16
+	lpUniversalName *uint16
 }
 
 // WNetGetUniversalName retrieves the Universal Naming Convention (UNC) path for a mapped drive.
 //
-// Ref: https://learn.microsoft.com/en-us/windows/win32/api/winnetwk/nf-winnetwk-wnetgetuniversalnamea
+// Ref: https://learn.microsoft.com/en-us/windows/win32/api/winnetwk/nf-winnetwk-wnetgetuniversalnamew
 func WNetGetUniversalName(lpLocalPath string) (result string, err error) {
-	var uni universalNameInfo
-	var bufferSize = uint32(unsafe.Sizeof(uni))
-	if r1, _, lastErr := wNetGetUniversalName.Call(CStr(lpLocalPath), uintptr(UNIVERSAL_NAME_INFO_LEVEL), uintptr(unsafe.Pointer(&uni)),
-		uintptr(unsafe.Pointer(&bufferSize))); r1 != 0 {
-		return "", lastErr
+	size := uint32(1024)
+
+	for {
+		info := &universalNameInfo{}
+		r1, _, _ := wNetGetUniversalName.Call(CStr(lpLocalPath), uintptr(UNIVERSAL_NAME_INFO_LEVEL), uintptr(unsafe.Pointer(info)), uintptr(unsafe.Pointer(&size)))
+		if r1 != 0 {
+			err = syscall.Errno(r1)
+			if !errors.Is(err, windows.ERROR_MORE_DATA) {
+				return "", err
+			}
+			continue
+		}
+
+		return windows.UTF16PtrToString(info.lpUniversalName), nil
 	}
-
-	bufferStrings := splitStringBuffer(uni.universalName[:])
-	//  There is some junk returned at the beginning of the structure. The actual UNC path starts after the first null terminator.
-	return bufferStrings[1], nil
-}
-
-// From https://github.com/BishopFox/sliver/blob/2a1453ee37dcb505b212769e08fbb59c961d2a69/implant/sliver/mount/mount_windows.go#L112-L115
-func splitStringBuffer(buffer []uint16) []string {
-	bufferString := string(utf16.Decode(buffer))
-	return strings.Split(strings.TrimRight(bufferString, "\x00"), "\x00")
 }
