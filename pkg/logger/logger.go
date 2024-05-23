@@ -16,6 +16,7 @@ const logCount = 5
 
 var cs = make([]*Context, 0, 10)
 
+// New creates a new log file
 func New(p, n string) (*Context, error) {
 	c := &Context{
 		path: p,
@@ -34,10 +35,14 @@ func New(p, n string) (*Context, error) {
 	return c, nil
 }
 
+// NewWithChildProcess creates a new log file with child process
+//
+// No files will be created, the latest log file will be used.
 func NewWithChildProcess(p, n string) (*Context, error) {
 	c := &Context{
-		path: p,
-		name: n,
+		path:    p,
+		name:    n,
+		isChild: true,
 		syncWriter: syncWriter{
 			m:    sync.Mutex{},
 			file: nil,
@@ -50,6 +55,29 @@ func NewWithChildProcess(p, n string) (*Context, error) {
 	cs = append(cs, c)
 
 	return c, nil
+}
+
+// NewOnlyCreate creates a new log file without any operation
+//
+// Only create a new log file, and return the path of the log file
+func NewOnlyCreate(p, n string) (string, error) {
+	c := &Context{
+		path: p,
+		name: n,
+		syncWriter: syncWriter{
+			m:    sync.Mutex{},
+			file: nil,
+		},
+	}
+	if err := c.createLog(); err != nil {
+		return "", err
+	}
+
+	logPath := c.file.Name()
+
+	c.Close()
+
+	return logPath, nil
 }
 
 func CloseAll() {
@@ -71,8 +99,9 @@ func (w *syncWriter) write(b []byte) (n int, err error) {
 }
 
 type Context struct {
-	path string
-	name string
+	path    string
+	name    string
+	isChild bool
 	syncWriter
 }
 
@@ -128,7 +157,11 @@ func (c *Context) useExistLog() error {
 
 func (c *Context) base(t, message string) {
 	d := time.Now().Format("2006-01-02 15:04:05.000")
-	_, _ = c.write([]byte(fmt.Sprintf("%s [%s]: %s\n", d, t, message)))
+	if c.isChild {
+		_, _ = c.write([]byte(fmt.Sprintf("%s [CHILD] [%s]: %s\n", d, t, message)))
+	} else {
+		_, _ = c.write([]byte(fmt.Sprintf("%s [%s]: %s\n", d, t, message)))
+	}
 }
 
 func (c *Context) Info(message string) {
