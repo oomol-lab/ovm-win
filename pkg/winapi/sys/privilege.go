@@ -146,7 +146,7 @@ func currentEXEAndCWD() (exe, cwd string, err error) {
 
 	uncCWD, err := winapi.WNetGetUniversalName(cwdGo)
 	if err != nil {
-		return "", "", fmt.Errorf("could not get universal name for current process: %v", err)
+		return exeStr, cwdGo, nil
 	}
 
 	return exeStr, uncCWD, nil
