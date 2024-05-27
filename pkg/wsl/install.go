@@ -23,6 +23,9 @@ func IsNeedReboot(err error) bool {
 	return errors.Is(err, needRebootErr)
 }
 
+// Install installs WSL2 feature and update kernel
+//
+// Enable feature need admin privileges and reboot, update kernel need WSL2 feature enabled
 func Install(opt *cli.Context, log *logger.Context) error {
 	isFeatureEnabled := isFeatureEnabled(log)
 	isInstalled := isInstalled(log)
