@@ -6,7 +6,7 @@ package logger
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
@@ -112,10 +112,10 @@ func (c *Context) createLog() error {
 		if i > 1 {
 			logName += "." + strconv.Itoa(i)
 		}
-		logPath := path.Join(c.path, logName+".log")
+		logPath := filepath.Join(c.path, logName+".log")
 
 		if _, err := os.Stat(logPath); err == nil {
-			err := os.Rename(logPath, path.Join(c.path, c.name+"."+strconv.Itoa(i+1)+".log"))
+			err := os.Rename(logPath, filepath.Join(c.path, c.name+"."+strconv.Itoa(i+1)+".log"))
 			if err != nil {
 				return fmt.Errorf("cannot rename log file: %v", err)
 			}
@@ -138,7 +138,7 @@ func (c *Context) useExistLog() error {
 		if i > 1 {
 			logName += "." + strconv.Itoa(i)
 		}
-		logPath := path.Join(c.path, logName+".log")
+		logPath := filepath.Join(c.path, logName+".log")
 
 		if _, err := os.Stat(logPath); err != nil {
 			continue
