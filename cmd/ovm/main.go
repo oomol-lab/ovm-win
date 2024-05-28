@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
+	"github.com/oomol-lab/ovm-win/pkg/restful"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
 	"github.com/oomol-lab/ovm-win/pkg/wsl"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -61,16 +65,27 @@ func main() {
 
 		log.Error(fmt.Sprintf("Failed to install WSL2: %v", err))
 		exit(1)
-	} else {
-		// If it is currently a child process, then its task has been completed, and we need to exit.
-		if opt.IsElevatedProcess {
-			exit(0)
-		}
 	}
 
-	log.Info("Done")
-	exit(0)
+	ctx, cancel := context.WithCancel(context.Background())
+	g, ctx := errgroup.WithContext(ctx)
 
+	g.Go(func() error {
+		return restful.Run(ctx, opt, log)
+	})
+
+	go func() {
+		time.Sleep(2 * time.Minute)
+		cancel()
+	}()
+
+	if err := g.Wait(); err != nil {
+		log.Errorf("main error: %v", err)
+		exit(1)
+	} else {
+		log.Info("Done")
+		exit(0)
+	}
 }
 
 func exit(exitCode int) {
