@@ -32,6 +32,10 @@ words:
   - NOASSOC
   - xaevman
   - HKCU
+
+  # pkg/npipe
+  - npipe
+  - sddl
 dictionaries:
   - companies
   - softwareTerms

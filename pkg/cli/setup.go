@@ -17,6 +17,7 @@ type Context struct {
 	LogPath           string
 	IsElevatedProcess bool
 	IsAdmin           bool
+	RestfulEndpoint   string
 }
 
 func Setup() (*Context, error) {
@@ -37,6 +38,7 @@ func Setup() (*Context, error) {
 
 func (c *Context) basic() error {
 	c.Name = name
+	c.RestfulEndpoint = `\\.\pipe\ovm-` + c.Name
 	return nil
 }
 
