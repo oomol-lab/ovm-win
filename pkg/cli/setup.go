@@ -18,6 +18,7 @@ type Context struct {
 	IsElevatedProcess bool
 	IsAdmin           bool
 	RestfulEndpoint   string
+	EventSocketPath   string
 }
 
 func Setup() (*Context, error) {
@@ -39,6 +40,7 @@ func Setup() (*Context, error) {
 func (c *Context) basic() error {
 	c.Name = name
 	c.RestfulEndpoint = `\\.\pipe\ovm-` + c.Name
+	c.EventSocketPath = `\\.\pipe\` + eventNpipeName
 	return nil
 }
 
