@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/oomol-lab/ovm-win/pkg/cli"
+	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
+	"github.com/oomol-lab/ovm-win/pkg/ipc/restful"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
-	"github.com/oomol-lab/ovm-win/pkg/restful"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
 	"github.com/oomol-lab/ovm-win/pkg/wsl"
 	"golang.org/x/sync/errgroup"
@@ -57,22 +58,27 @@ func main() {
 		exit(1)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	g, ctx := errgroup.WithContext(ctx)
+
+	if !opt.IsElevatedProcess {
+		g.Go(func() error {
+			return restful.Run(ctx, opt, log)
+		})
+	}
+
+	event.Setup(log, opt.EventSocketPath)
+
 	if err := wsl.Install(opt, log); err != nil {
 		if wsl.IsNeedReboot(err) {
 			log.Info("Need reboot system")
+			event.Notify(event.NeedReboot)
 			exit(0)
 		}
 
 		log.Error(fmt.Sprintf("Failed to install WSL2: %v", err))
 		exit(1)
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	g, ctx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		return restful.Run(ctx, opt, log)
-	})
 
 	go func() {
 		time.Sleep(2 * time.Minute)
@@ -81,6 +87,7 @@ func main() {
 
 	if err := g.Wait(); err != nil {
 		log.Errorf("main error: %v", err)
+		event.NotifyError(err)
 		exit(1)
 	} else {
 		log.Info("Done")
@@ -89,6 +96,10 @@ func main() {
 }
 
 func exit(exitCode int) {
+	if !opt.IsElevatedProcess {
+		event.Notify(event.Exit)
+	}
+
 	logger.CloseAll()
 	for _, clean := range cleans {
 		clean()

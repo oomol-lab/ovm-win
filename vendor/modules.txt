@@ -1,3 +1,6 @@
+# github.com/Code-Hex/go-infinity-channel v1.0.0
+## explicit; go 1.18
+github.com/Code-Hex/go-infinity-channel
 # github.com/Microsoft/go-winio v0.6.2
 ## explicit; go 1.21
 github.com/Microsoft/go-winio
