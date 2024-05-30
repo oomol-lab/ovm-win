@@ -19,6 +19,7 @@ type Context struct {
 	IsAdmin           bool
 	RestfulEndpoint   string
 	EventSocketPath   string
+	CanReboot         bool
 }
 
 func Setup() (*Context, error) {
@@ -41,6 +42,7 @@ func (c *Context) basic() error {
 	c.Name = name
 	c.RestfulEndpoint = `\\.\pipe\ovm-` + c.Name
 	c.EventSocketPath = `\\.\pipe\` + eventNpipeName
+	c.CanReboot = false
 	return nil
 }
 

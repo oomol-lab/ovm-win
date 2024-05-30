@@ -45,6 +45,7 @@ func Install(opt *cli.Context, log *logger.Context) error {
 			}
 
 			log.Info("Admin process already successfully executed and exited")
+			opt.CanReboot = true
 			return nil
 		}
 

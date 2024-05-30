@@ -5,12 +5,14 @@ package restful
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/npipe"
+	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
 )
 
 type restful struct {
@@ -54,18 +56,61 @@ func (r *restful) start(ctx context.Context) error {
 
 func (r *restful) mux() http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("/ping", middlewareLog(r.log, ping))
+	mux.Handle("/reboot", mustPost(r.log, middlewareLog(r.log, r.reboot)))
 	return mux
 }
 
-func ping(w http.ResponseWriter, _ *http.Request) {
-	_, _ = w.Write([]byte("pong"))
+type rebootBody struct {
+	// RunOnce is the command to run after the next system startup
+	RunOnce string `json:"runOnce"`
 }
 
-func middlewareLog(log *logger.Context, next http.HandlerFunc) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Infof("restful server: received request: %s", r.URL.Path)
-		next.ServeHTTP(w, r)
-		log.Infof("restful server: finished request: %s", r.URL.Path)
-	})
+func (r *restful) reboot(w http.ResponseWriter, req *http.Request) {
+	if !r.opt.CanReboot {
+		r.log.Warn("reboot is not allowed")
+		http.Error(w, "reboot is not allowed", http.StatusForbidden)
+		return
+	}
+
+	var body rebootBody
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		r.log.Warnf("failed to decode request body: %v", err)
+		http.Error(w, "failed to decode request body", http.StatusBadRequest)
+		return
+	}
+
+	if body.RunOnce == "" {
+		http.Error(w, "runOnce is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := sys.RunOnce(body.RunOnce); err != nil {
+		r.log.Warnf("failed to set %s to runOnce: %v", body.RunOnce, err)
+		http.Error(w, "failed to set runOnce", http.StatusInternalServerError)
+		return
+	}
+
+	if err := sys.Reboot(); err != nil {
+		r.log.Warnf("failed to reboot system: %v", err)
+		http.Error(w, "failed to reboot system", http.StatusInternalServerError)
+	}
+}
+
+func middlewareLog(log *logger.Context, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		log.Infof("restful server: received request: %s", req.URL.Path)
+		next.ServeHTTP(w, req)
+		log.Infof("restful server: finished request: %s", req.URL.Path)
+	}
+}
+
+func mustPost(log *logger.Context, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost {
+			log.Warnf("restful server: %s is not allowed in %s", req.Method, req.URL.Path)
+			http.Error(w, "post only", http.StatusBadRequest)
+		} else {
+			next.ServeHTTP(w, req)
+		}
+	}
 }
