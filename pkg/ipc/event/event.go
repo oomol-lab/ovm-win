@@ -37,10 +37,8 @@ type event struct {
 
 var e *event
 
-// currently, infinity does not provide a blocking function to determine if a channel has already closed,
-// so we need to add a new channel to check.
 // see: https://github.com/Code-Hex/go-infinity-channel/issues/1
-var waitClose = make(chan struct{})
+var waitDone = make(chan struct{})
 
 func Setup(log *logger.Context, socketPath string) {
 	c := &http.Client{
@@ -73,9 +71,7 @@ func Setup(log *logger.Context, socketPath string) {
 			}
 
 			if datum.name == Exit || datum.name == NeedReboot {
-				e.channel.Close()
-				e = nil
-				waitClose <- struct{}{}
+				waitDone <- struct{}{}
 				return
 			}
 		}
@@ -95,7 +91,10 @@ func Notify(name Name) {
 	// Exit event indicates the main process exit
 	// NeedReboot event indicates the child process exit
 	if name == Exit || name == NeedReboot {
-		<-waitClose
+		e.channel.Close()
+		<-waitDone
+		close(waitDone)
+		e = nil
 	}
 }
 
