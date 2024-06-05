@@ -24,6 +24,7 @@ func CreateVHDX(path string, maxSizeInBytes uint64) error {
 			BlockSizeInBytes: blockSizeInMb * 1024 * 1024,
 		},
 	}
+
 	// Use `CreateVirtualDiskFlagSparseFile|createVirtualDiskFlagSupportSparseFileAnyFs` to create a sparse file,
 	// support dynamic size (automatic shrinking)
 	handle, err := vhd.CreateVirtualDisk(path, vhd.VirtualDiskAccessNone, vhd.CreateVirtualDiskFlagSparseFile|createVirtualDiskFlagSupportSparseFileAnyFs, &params)
