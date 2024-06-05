@@ -69,15 +69,34 @@ func main() {
 
 	event.Setup(log, opt.EventSocketPath)
 
-	if err := wsl.Install(opt, log); err != nil {
-		if wsl.IsNeedReboot(err) {
-			log.Info("Need reboot system")
-			event.Notify(event.NeedReboot)
-			exit(0)
+	// WSL Install / Check / Update
+	{
+		if err := wsl.Install(opt, log); err != nil {
+			if wsl.IsNeedReboot(err) {
+				log.Info("Need reboot system")
+				event.Notify(event.NeedReboot)
+				exit(0)
+			}
+
+			log.Error(fmt.Sprintf("Failed to install WSL2: %v", err))
+			exit(1)
 		}
 
-		log.Error(fmt.Sprintf("Failed to install WSL2: %v", err))
-		exit(1)
+		shouldUpdate, err := wsl.ShouldUpdate(log)
+		if err != nil {
+			log.Error(fmt.Sprintf("Failed to check if WSL2 needs to be updated: %v", err))
+			exit(1)
+		}
+
+		if shouldUpdate {
+			if err := wsl.Update(log); err != nil {
+				log.Error(fmt.Sprintf("Failed to update WSL2: %v", err))
+				exit(1)
+			}
+			log.Info("WSL has been updated")
+		} else {
+			log.Info("WSL is up to date")
+		}
 	}
 
 	go func() {

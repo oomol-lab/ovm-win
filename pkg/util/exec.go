@@ -4,6 +4,8 @@
 package util
 
 import (
+	"bytes"
+	"fmt"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -17,8 +19,7 @@ const (
 )
 
 func Silent(log *logger.Context, command string, args ...string) error {
-	cmd := exec.Command(command, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: flagsCreateNoWindow}
+	cmd := SilentCmd(command, args...)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 
@@ -30,6 +31,22 @@ func SilentCmd(command string, args ...string) *exec.Cmd {
 	cmd := exec.Command(command, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: flagsCreateNoWindow}
 	return cmd
+}
+
+func ExecCmd(log *logger.Context, command string, args ...string) (string, error) {
+	cmd := SilentCmd(command, args...)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	cmd.Env = append(cmd.Env, "WSL_UTF8=1")
+
+	log.Infof("Running command: %s %s", command, strings.Join(args, " "))
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("`%v %v` failed: %v %v (%v)", command, strings.Join(args, " "), stderr.String(), stdout.String(), err)
+	}
+
+	return stdout.String(), nil
 }
 
 func EscapeArg(args []string) string {
