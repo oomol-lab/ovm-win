@@ -89,9 +89,9 @@ func enableFeatures(opt *cli.Context, log *logger.Context) error {
 	return nil
 }
 
-// Update updates WSL2(include WSL kernel)
+// Update updates WSL2(include kernel)
 func Update(log *logger.Context) error {
-	log.Info("Updating WSL...")
+	log.Info("Updating WSL2...")
 
 	backoff := 500 * time.Millisecond
 	tryCount := 3
@@ -103,16 +103,16 @@ func Update(log *logger.Context) error {
 
 		var eerr *exec.ExitError
 		if errors.As(err, &eerr) {
-			log.Warnf("Failed to update WSL: %v, exit code: %d, retry %d/%d", err, eerr.ExitCode(), i, tryCount)
+			log.Warnf("Failed to update WSL2: %v, exit code: %d, retry %d/%d", err, eerr.ExitCode(), i, tryCount)
 		} else {
-			log.Warnf("Failed to update WSL: %v, retry %d/%d", err, i, tryCount)
+			log.Warnf("Failed to update WSL2: %v, retry %d/%d", err, i, tryCount)
 		}
 
 		time.Sleep(backoff)
 		backoff *= 2
 	}
 
-	return fmt.Errorf("failed to update WSL")
+	return fmt.Errorf("failed to update WSL2")
 }
 
 const (

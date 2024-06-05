@@ -35,12 +35,12 @@ func (r *restful) start(ctx context.Context) error {
 		return fmt.Errorf("failed to create npipe listener: %w", err)
 	}
 
-	r.log.Infof("restful server is ready to run on %s", r.opt.RestfulEndpoint)
+	r.log.Infof("RESTful server is ready to run on %s", r.opt.RestfulEndpoint)
 
 	go func() {
 		<-ctx.Done()
 		_ = nl.Close()
-		r.log.Info("restful server is shutting down, because the context is done")
+		r.log.Info("RESTful server is shutting down, because the context is done")
 	}()
 
 	server := &http.Server{
@@ -67,14 +67,14 @@ type rebootBody struct {
 
 func (r *restful) reboot(w http.ResponseWriter, req *http.Request) {
 	if !r.opt.CanReboot {
-		r.log.Warn("reboot is not allowed")
+		r.log.Warn("Reboot is not allowed")
 		http.Error(w, "reboot is not allowed", http.StatusForbidden)
 		return
 	}
 
 	var body rebootBody
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-		r.log.Warnf("failed to decode request body: %v", err)
+		r.log.Warnf("Failed to decode request body: %v", err)
 		http.Error(w, "failed to decode request body", http.StatusBadRequest)
 		return
 	}
@@ -85,29 +85,29 @@ func (r *restful) reboot(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := sys.RunOnce(body.RunOnce); err != nil {
-		r.log.Warnf("failed to set %s to runOnce: %v", body.RunOnce, err)
+		r.log.Warnf("Failed to set %s to runOnce: %v", body.RunOnce, err)
 		http.Error(w, "failed to set runOnce", http.StatusInternalServerError)
 		return
 	}
 
 	if err := sys.Reboot(); err != nil {
-		r.log.Warnf("failed to reboot system: %v", err)
+		r.log.Warnf("Failed to reboot system: %v", err)
 		http.Error(w, "failed to reboot system", http.StatusInternalServerError)
 	}
 }
 
 func middlewareLog(log *logger.Context, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		log.Infof("restful server: received request: %s", req.URL.Path)
+		log.Infof("RESTful server: received request: %s", req.URL.Path)
 		next.ServeHTTP(w, req)
-		log.Infof("restful server: finished request: %s", req.URL.Path)
+		log.Infof("RESTful server: finished request: %s", req.URL.Path)
 	}
 }
 
 func mustPost(log *logger.Context, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPost {
-			log.Warnf("restful server: %s is not allowed in %s", req.Method, req.URL.Path)
+			log.Warnf("RESTful server: %s is not allowed in %s", req.Method, req.URL.Path)
 			http.Error(w, "post only", http.StatusBadRequest)
 		} else {
 			next.ServeHTTP(w, req)

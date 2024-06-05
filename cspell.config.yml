@@ -32,6 +32,8 @@ words:
   - NOASSOC
   - xaevman
   - HKCU
+  - winio
+  - vhdx
 
   # pkg/npipe
   - npipe

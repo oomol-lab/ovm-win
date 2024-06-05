@@ -63,14 +63,14 @@ func isFeatureEnabled(log *logger.Context) bool {
 func wslVersion(log *logger.Context) (string, error) {
 	r, err := util.ExecCmd(log, Find(), "--version")
 	if err != nil {
-		return "", fmt.Errorf("failed to get WSL version: %w", err)
+		return "", fmt.Errorf("failed to get WSL2 version: %w", err)
 	}
 
 	wslLine := strings.Split(r, "\n")[0]
 	wslLine = strings.TrimSpace(wslLine)
 	offset := strings.LastIndex(wslLine, " ")
 	if offset == -1 {
-		return r, fmt.Errorf("failed to parse WSL version: %s", r)
+		return r, fmt.Errorf("failed to parse WSL2 version: %s", r)
 	}
 
 	return strings.TrimSpace(wslLine[offset+1:]), nil
@@ -81,18 +81,18 @@ const minVersion = "2.1.5"
 func ShouldUpdate(log *logger.Context) (bool, error) {
 	v, err := wslVersion(log)
 	if err != nil {
-		return false, fmt.Errorf("failed to get WSL version: %w", err)
+		return false, fmt.Errorf("failed to get WSL2 version: %w", err)
 	}
 
 	log.Infof("Current WSL2 version: %s", v)
 	currentVersion, err := version.NewVersion(v)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse current WSL version: %w", err)
+		return false, fmt.Errorf("failed to parse current WSL2 version: %w", err)
 	}
 
 	minVersion, err := version.NewVersion(minVersion)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse min WSL version: %w", err)
+		return false, fmt.Errorf("failed to parse min WSL2 version: %w", err)
 	}
 
 	if currentVersion.LessThan(minVersion) {
