@@ -59,14 +59,14 @@ func Setup(log *logger.Context, socketPath string) {
 	go func() {
 		for datum := range e.channel.Out() {
 			uri := fmt.Sprintf("http://ovm/notify?event=%s&message=%s", datum.name, url.QueryEscape(datum.message))
-			e.log.Infof("notify %s event to %s", datum.name, uri)
+			e.log.Infof("Notify %s event to %s", datum.name, uri)
 
 			if resp, err := e.client.Get(uri); err != nil {
-				e.log.Warnf("notify %+v event failed: %v", *datum, err)
+				e.log.Warnf("Notify %+v event failed: %v", *datum, err)
 			} else {
 				_ = resp.Body.Close()
 				if resp.StatusCode != http.StatusOK {
-					e.log.Warnf("notify %+v event failed, status code is: %d", *datum, resp.StatusCode)
+					e.log.Warnf("Notify %+v event failed, status code is: %d", *datum, resp.StatusCode)
 				}
 			}
 

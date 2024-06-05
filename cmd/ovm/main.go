@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-License-Identifier: MPL-2.0
+
 package main
 
 import (
@@ -69,7 +72,7 @@ func main() {
 
 	event.Setup(log, opt.EventSocketPath)
 
-	// WSL Check / Install / Update
+	// WSL2 Check / Install / Update
 	{
 		if !sys.SupportWSL2(log) {
 			log.Error("WSL2 is not supported on this system, need Windows 10 version 19043 or higher")
@@ -98,9 +101,9 @@ func main() {
 				log.Error(fmt.Sprintf("Failed to update WSL2: %v", err))
 				exit(1)
 			}
-			log.Info("WSL has been updated")
+			log.Info("WSL2 has been updated")
 		} else {
-			log.Info("WSL is up to date")
+			log.Info("WSL2 is up to date")
 		}
 	}
 
@@ -110,7 +113,7 @@ func main() {
 	}()
 
 	if err := g.Wait(); err != nil {
-		log.Errorf("main error: %v", err)
+		log.Errorf("Main error: %v", err)
 		event.NotifyError(err)
 		exit(1)
 	} else {

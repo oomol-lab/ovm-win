@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-License-Identifier: MPL-2.0
+
 package vhdx
 
 import (
@@ -11,8 +14,8 @@ import "github.com/Microsoft/go-winio/vhd"
 // winio lacks this flag
 const (
 	// Ref: https://github.com/microsoft/win32metadata/blob/19ceee6047a3f083bbf573400ef8596ea66ad2d1/generation/WinSDK/RecompiledIdlHeaders/um/virtdisk.h#L382-L386
-	createVirtualDiskFlagSupportSparseFileAnyFs = 0x400
-	blockSizeInMb uint32 = 1
+	createVirtualDiskFlagSupportSparseFileAnyFs        = 0x400
+	blockSizeInMb                               uint32 = 1
 )
 
 // CreateVHDX create vhdx

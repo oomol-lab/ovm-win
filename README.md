@@ -1,10 +1,10 @@
 ## TODO
 
 - [ ] WSL2
-  - [ ] Status Check
-  - [ ] Enable Feature @ihexo @BlackHole1
-  - [ ] Reboot @BlackHole1
-  - [ ] Create extra partition (VHDX)
+  - [x] Status Check
+  - [x] Enable Feature @ihexo @BlackHole1
+  - [x] Reboot @BlackHole1
+  - [x] Create extra partition (VHDX)
   - [ ] Import RootFS
   - [ ] Update RootFS
   - [ ] RootFS and data.img version control
