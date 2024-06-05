@@ -69,8 +69,13 @@ func main() {
 
 	event.Setup(log, opt.EventSocketPath)
 
-	// WSL Install / Check / Update
+	// WSL Check / Install / Update
 	{
+		if !sys.SupportWSL2(log) {
+			log.Error("WSL2 is not supported on this system, need Windows 10 version 19043 or higher")
+			exit(1)
+		}
+
 		if err := wsl.Install(opt, log); err != nil {
 			if wsl.IsNeedReboot(err) {
 				log.Info("Need reboot system")
