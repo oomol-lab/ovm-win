@@ -19,6 +19,10 @@ func Find() string {
 	onceFind.Do(func() {
 		var list []string
 
+		if p, ok := util.ProgramFiles(); ok {
+			list = append(list, filepath.Join(p, "WSL", "wsl.exe"))
+		}
+
 		if p, ok := util.LocalAppData(); ok {
 			list = append(list, filepath.Join(p, "Microsoft", "WindowsApps", "wsl.exe"))
 		}

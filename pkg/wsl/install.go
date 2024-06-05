@@ -60,8 +60,8 @@ func Install(opt *cli.Context, log *logger.Context) error {
 
 	log.Info("WSL2 is not updated, ready to update")
 
-	if err := updateKernel(log); err != nil {
-		return fmt.Errorf("failed to update WSL2 kernel: %w", err)
+	if err := Update(log); err != nil {
+		return fmt.Errorf("failed to update WSL2: %w", err)
 	}
 
 	log.Info("WSL2 kernel updated successfully")
@@ -89,8 +89,9 @@ func enableFeatures(opt *cli.Context, log *logger.Context) error {
 	return nil
 }
 
-func updateKernel(log *logger.Context) error {
-	log.Info("Updating WSL2 kernel")
+// Update updates WSL2(include WSL kernel)
+func Update(log *logger.Context) error {
+	log.Info("Updating WSL...")
 
 	backoff := 500 * time.Millisecond
 	tryCount := 3
@@ -100,12 +101,18 @@ func updateKernel(log *logger.Context) error {
 			return nil
 		}
 
-		log.Warn("An error occurred attempting the WSL Kernel update, retrying...")
+		var eerr *exec.ExitError
+		if errors.As(err, &eerr) {
+			log.Warnf("Failed to update WSL: %v, exit code: %d, retry %d/%d", err, eerr.ExitCode(), i, tryCount)
+		} else {
+			log.Warnf("Failed to update WSL: %v, retry %d/%d", err, i, tryCount)
+		}
+
 		time.Sleep(backoff)
 		backoff *= 2
 	}
 
-	return fmt.Errorf("failed to update WSL2 kernel")
+	return fmt.Errorf("failed to update WSL")
 }
 
 const (
