@@ -7,3 +7,5 @@ $RECYCLE.BIN/
 .DS_Store
 
 logs
+
+pkg/winapi/vhdx/*_test.go
