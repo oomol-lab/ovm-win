@@ -5,8 +5,11 @@ package util
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -56,4 +59,41 @@ func EscapeArg(args []string) string {
 	}
 
 	return strings.Join(newArgs, " ")
+}
+
+//go:embed "bin/xz.exe" "bin/liblzma-5.dll" "bin/libiconv-2.dll" "bin/libintl-8.dll"
+var embeddedFiles embed.FS
+
+func ExecExtTools(log *logger.Context, command string, args ...string) error {
+
+	files := []string{"bin/xz.exe", "bin/liblzma-5.dll", "bin/libiconv-2.dll", "bin/libintl-8.dll"}
+
+	tempDir, err := os.MkdirTemp("", "xz_temp")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary directory: %v", err)
+	}
+	binDir := filepath.Join(tempDir, "bin")
+	err = os.Mkdir(binDir, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create temporary bin directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	for _, file := range files {
+		data, err := embeddedFiles.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("failed to read embedded file (%s): %v", file, err)
+		}
+
+		destPath := filepath.Join(tempDir, file)
+		err = os.WriteFile(destPath, data, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to extract file (%s): %v", destPath, err)
+		}
+	}
+
+	// 构建命令
+	_, _ = ExecCmd(log, (filepath.Join(tempDir, "bin/", command)), args...)
+
+	return nil
 }
