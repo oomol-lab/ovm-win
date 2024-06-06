@@ -13,6 +13,7 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
 	"github.com/oomol-lab/ovm-win/pkg/ipc/restful"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
+	"github.com/oomol-lab/ovm-win/pkg/update"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
 	"github.com/oomol-lab/ovm-win/pkg/wsl"
 	"golang.org/x/sync/errgroup"
@@ -105,6 +106,12 @@ func main() {
 		} else {
 			log.Info("WSL2 is up to date")
 		}
+	}
+
+	if err := update.New(opt).CheckAndReplace(); err != nil {
+		log.Errorf("Failed to update: %v", err)
+		cancel()
+		exit(1)
 	}
 
 	go func() {
