@@ -11,12 +11,18 @@ import (
 var (
 	name           string
 	logPath        string
+	imageDir       string
+	rootfsPath     string
+	versions       string
 	eventNpipeName string
 )
 
 func parse() error {
 	flag.StringVar(&name, "name", "", "Name of the virtual machine")
 	flag.StringVar(&logPath, "log-path", "", "Path to the log file")
+	flag.StringVar(&imageDir, "image-dir", "", "Store disk images")
+	flag.StringVar(&rootfsPath, "rootfs-path", "", "Path to rootfs image")
+	flag.StringVar(&versions, "versions", "", "Set versions")
 	flag.StringVar(&eventNpipeName, "event-npipe-name", "", "HTTP server established in the named pipe (such as the foo in //./pipe/foo) must implement the GET /notify?event=&message= route")
 
 	flag.Parse()
@@ -31,6 +37,18 @@ func validate() error {
 
 	if logPath == "" {
 		return fmt.Errorf("log-path is required in cli")
+	}
+
+	if imageDir == "" {
+		return fmt.Errorf("images-path is required in cli")
+	}
+
+	if rootfsPath == "" {
+		return fmt.Errorf("rootfs-path is required in cli")
+	}
+
+	if versions == "" {
+		return fmt.Errorf("versions is required in cli")
 	}
 
 	if eventNpipeName == "" {
