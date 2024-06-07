@@ -61,11 +61,12 @@ func isFeatureEnabled(log *logger.Context) bool {
 }
 
 func wslVersion(log *logger.Context) (string, error) {
-	r, err := util.ExecCmd(log, Find(), "--version")
+	br, err := wslExec(log, Find(), "--version")
 	if err != nil {
 		return "", fmt.Errorf("failed to get WSL2 version: %w", err)
 	}
 
+	r := string(br)
 	wslLine := strings.Split(r, "\n")[0]
 	wslLine = strings.TrimSpace(wslLine)
 	offset := strings.LastIndex(wslLine, " ")

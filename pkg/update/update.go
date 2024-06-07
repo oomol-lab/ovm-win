@@ -6,6 +6,7 @@ package update
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"os"
 	"path/filepath"
 
@@ -15,7 +16,7 @@ import (
 )
 
 type Updater interface {
-	CheckAndReplace() error
+	CheckAndReplace(log *logger.Context) error
 }
 
 type context struct {
@@ -48,7 +49,6 @@ func (c *context) save() error {
 
 func (c *context) needUpdate() (result []types.VersionKey) {
 	jsonVersion := &context{}
-
 	data, err := os.ReadFile(c.jsonPath)
 	if err != nil {
 		return []types.VersionKey{types.VersionRootFS, types.VersionData}
@@ -70,7 +70,7 @@ func (c *context) needUpdate() (result []types.VersionKey) {
 	return
 }
 
-func (c *context) CheckAndReplace() error {
+func (c *context) CheckAndReplace(log *logger.Context) error {
 	list := c.needUpdate()
 	if len(list) == 0 {
 		return nil
@@ -81,7 +81,9 @@ func (c *context) CheckAndReplace() error {
 	for _, item := range list {
 		switch item {
 		case types.VersionRootFS:
-			g.Go(updateRootfs)
+			g.Go(func() error {
+				return updateRootfs(c.opt, log)
+			})
 		case types.VersionData:
 			g.Go(updateDate)
 		}

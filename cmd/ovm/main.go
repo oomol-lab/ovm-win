@@ -108,7 +108,7 @@ func main() {
 		}
 	}
 
-	if err := update.New(opt).CheckAndReplace(); err != nil {
+	if err := update.New(opt).CheckAndReplace(log); err != nil {
 		log.Errorf("Failed to update: %v", err)
 		cancel()
 		exit(1)

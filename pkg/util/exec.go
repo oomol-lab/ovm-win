@@ -33,13 +33,12 @@ func SilentCmd(command string, args ...string) *exec.Cmd {
 	return cmd
 }
 
-func ExecCmd(log *logger.Context, command string, args ...string) (string, error) {
+func Exec(log *logger.Context, command string, args ...string) (string, error) {
 	cmd := SilentCmd(command, args...)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	cmd.Env = append(cmd.Env, "WSL_UTF8=1")
 
 	log.Infof("Running command: %s %s", command, strings.Join(args, " "))
 	if err := cmd.Run(); err != nil {

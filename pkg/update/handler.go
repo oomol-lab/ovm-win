@@ -3,11 +3,21 @@
 
 package update
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/oomol-lab/ovm-win/pkg/cli"
+	"github.com/oomol-lab/ovm-win/pkg/logger"
+	"github.com/oomol-lab/ovm-win/pkg/wsl"
+)
 
 // TODO
-func updateRootfs() error {
+func updateRootfs(opt *cli.Context, log *logger.Context) error {
 	fmt.Println("updateRootfs")
+
+	err := wsl.ImportDistro(nil, true, opt.DistroName, opt.ImageDir, opt.RootfsPath)
+	if err != nil {
+		return fmt.Errorf(err.Error())
+	}
 	return nil
 }
 
