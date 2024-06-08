@@ -26,7 +26,7 @@ func Decompress(in string, out string) error {
 	zs := NewZstd()
 	err = zs.decompress(file, outFile)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to decompress file: %v", err))
+		return errors.New(fmt.Sprintf("failed to decompress file: %v", err))
 	}
 
 	return nil
