@@ -24,7 +24,7 @@ func Zstd(source, target string, overwrite bool) error {
 
 	out, err := os.Create(target)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create file %s: %w", target, err)
 	}
 	defer out.Close()
 
