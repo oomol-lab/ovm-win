@@ -39,7 +39,6 @@ var extCheckers = []extensionChecker{
 	&zst{},
 }
 
-// ByExt return the interface corresponding to the suffix name
 func createWithExt(filename string) (decompressor, error) {
 	var ifce interface{}
 	for _, obj := range extCheckers {
