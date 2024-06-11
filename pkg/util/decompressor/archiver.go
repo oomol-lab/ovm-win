@@ -34,7 +34,6 @@ type extensionChecker interface {
 	checkExt(name string) error
 }
 
-// ExtensionChecker every ExtensionChecker has chance to get execute
 var extCheckers = []extensionChecker{
 	&zst{},
 }
