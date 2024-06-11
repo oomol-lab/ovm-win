@@ -16,6 +16,7 @@ func newZst() *zst {
 func (z *zst) decompress(in io.Reader, out io.Writer) error {
 	readed, _ := z.openReader(in)
 	defer readed.Close()
+
 	if _, err := io.Copy(out, readed); err != nil {
 		return fmt.Errorf("failed to decompress zstd stream: %w", err)
 	}
