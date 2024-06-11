@@ -46,10 +46,12 @@ func getAllWSLDistros(log *logger.Context, running bool) (all map[string]struct{
 	if running {
 		args = append(args, "--running")
 	}
+
 	out, err := wslExec(log, args...)
 	if err != nil {
 		return nil, fmt.Errorf("could not get distros: %w", err)
 	}
+
 	scanner := bufio.NewScanner(bytes.NewReader(out))
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
