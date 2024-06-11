@@ -4,6 +4,7 @@ words:
   - Hwnd
   - lxss
   - eerr
+  - zstd
 
   # pkg/winapi
   - winapi
