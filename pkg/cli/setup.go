@@ -18,6 +18,8 @@ type Context struct {
 	Name              string
 	LogPath           string
 	ImageDir          string
+	RootfsPath        string
+	DistroName        string
 	Version           types.Version
 	IsElevatedProcess bool
 	IsAdmin           bool
@@ -47,6 +49,7 @@ func (c *Context) basic() error {
 	c.RestfulEndpoint = `\\.\pipe\ovm-` + c.Name
 	c.EventSocketPath = `\\.\pipe\` + eventNpipeName
 	c.CanReboot = false
+	c.DistroName = "ovm-" + c.Name
 	return nil
 }
 
@@ -79,6 +82,12 @@ func (c *Context) update() error {
 		return fmt.Errorf("failed to create imageDir folder %s: %v", p, err)
 	}
 	c.ImageDir = p
+
+	p, err = filepath.Abs(rootfsPath)
+	if err != nil {
+		return fmt.Errorf("failed to get rootfsPath absolute path from %s: %v", rootfsPath, err)
+	}
+	c.RootfsPath = p
 
 	version := types.Version{}
 	s := strings.Split(versions, ",")

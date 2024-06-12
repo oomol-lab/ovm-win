@@ -40,7 +40,7 @@ func validate() error {
 	}
 
 	if imageDir == "" {
-		return fmt.Errorf("images-path is required in cli")
+		return fmt.Errorf("image-dir is required in cli")
 	}
 
 	if rootfsPath == "" {
@@ -54,6 +54,5 @@ func validate() error {
 	if eventNpipeName == "" {
 		return fmt.Errorf("event-npipe-name is required in cli")
 	}
-
 	return nil
 }
