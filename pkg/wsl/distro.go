@@ -53,7 +53,7 @@ func IsRegister(log *logger.Context, distroName string) (ok bool, err error) {
 	return exists, nil
 }
 
-func getAllWSLDistros(log *logger.Context, running bool) (all map[string]struct{}, err error) {
+func getAllWSLDistros(log *logger.Context, running bool) (map[string]struct{}, error) {
 	args := []string{"--list", "--all", "--quiet"}
 	if running {
 		args = append(args, "--running")
@@ -64,6 +64,7 @@ func getAllWSLDistros(log *logger.Context, running bool) (all map[string]struct{
 		return nil, fmt.Errorf("could not get distros: %w", err)
 	}
 
+	all := make(map[string]struct{})
 	scanner := bufio.NewScanner(bytes.NewReader(out))
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
@@ -71,11 +72,11 @@ func getAllWSLDistros(log *logger.Context, running bool) (all map[string]struct{
 
 		fields := strings.Fields(line)
 		if len(fields) > 0 {
-			all[strings.TrimSpace(fields[0])] = struct{}{}
+			all[fields[0]] = struct{}{}
 		}
 	}
 
-	return
+	return all, nil
 }
 
 func wslExec(log *logger.Context, args ...string) ([]byte, error) {
