@@ -5,8 +5,6 @@ package update
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
@@ -16,16 +14,13 @@ import (
 func updateRootfs(opt *cli.Context, log *logger.Context) error {
 	// Remove the old distro
 	{
-		// TODO: we need to call wsl.Terminate?
 		if ok, err := wsl.IsRegister(log, opt.DistroName); err != nil {
 			return fmt.Errorf("failed to check if distro is registered: %w", err)
 		} else if ok {
 			if err := wsl.Unregister(log, opt.DistroName); err != nil {
-				return err
+				return fmt.Errorf("cannot remove old distro %s: %w", opt.DistroName, err)
 			}
 		}
-
-		_ = os.RemoveAll(filepath.Join(opt.ImageDir, "ext4.vhdx"))
 	}
 
 	if err := wsl.ImportDistro(log, opt.DistroName, opt.ImageDir, opt.RootfsPath); err != nil {

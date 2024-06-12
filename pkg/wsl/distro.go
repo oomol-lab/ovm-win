@@ -13,7 +13,7 @@ import (
 // Shutdown the wsl2 entirely
 func Shutdown(log *logger.Context) error {
 	if _, err := wslExec(log, "--shutdown"); err != nil {
-		return fmt.Errorf("could not shut WSL down: %w", err)
+		return fmt.Errorf("could not shutdown WSL: %w", err)
 	}
 
 	return nil
