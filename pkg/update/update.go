@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/util"
 
 	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/types"
-	"golang.org/x/sync/errgroup"
 )
 
 type Updater interface {
@@ -80,21 +80,16 @@ func (c *context) CheckAndReplace(log *logger.Context) error {
 		return nil
 	}
 
-	var g errgroup.Group
-
-	for _, item := range list {
-		switch item {
-		case types.VersionRootFS:
-			g.Go(func() error {
-				return updateRootfs(c.opt, log)
-			})
-		case types.VersionData:
-			g.Go(updateDate)
+	if slices.Contains(list, types.VersionData) {
+		if err := updateData(c.opt, log); err != nil {
+			return fmt.Errorf("failed to update data: %w", err)
 		}
 	}
 
-	if err := g.Wait(); err != nil {
-		return err
+	if slices.Contains(list, types.VersionRootFS) {
+		if err := updateRootfs(c.opt, log); err != nil {
+			return fmt.Errorf("failed to update rootfs: %w", err)
+		}
 	}
 
 	if err := c.save(); err != nil {
