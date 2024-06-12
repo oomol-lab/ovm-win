@@ -6,9 +6,11 @@ package update
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"os"
 	"path/filepath"
+
+	"github.com/oomol-lab/ovm-win/pkg/logger"
+	"github.com/oomol-lab/ovm-win/pkg/util"
 
 	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/types"
@@ -59,11 +61,13 @@ func (c *context) needUpdate() (result []types.VersionKey) {
 		return []types.VersionKey{types.VersionRootFS, types.VersionData}
 	}
 
-	if jsonVersion.RootFS != c.RootFS {
+	if jsonVersion.RootFS != c.RootFS ||
+		util.Exists(filepath.Join(c.opt.ImageDir, "ext4.vhdx")) != nil {
 		result = append(result, types.VersionRootFS)
 	}
 
-	if jsonVersion.Data != c.Data {
+	if jsonVersion.Data != c.Data ||
+		util.Exists(filepath.Join(c.opt.ImageDir, "data.vhdx")) != nil {
 		result = append(result, types.VersionData)
 	}
 
