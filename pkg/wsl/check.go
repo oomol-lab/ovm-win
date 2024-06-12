@@ -61,7 +61,7 @@ func isFeatureEnabled(log *logger.Context) bool {
 }
 
 func wslVersion(log *logger.Context) (string, error) {
-	br, err := wslExec(log, Find(), "--version")
+	br, err := wslExec(log, "--version")
 	if err != nil {
 		return "", fmt.Errorf("failed to get WSL2 version: %w", err)
 	}
