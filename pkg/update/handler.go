@@ -23,6 +23,7 @@ func updateRootfs(opt *cli.Context, log *logger.Context) error {
 		err := wsl.SafeSyncDisk(log, opt.DistroName)
 		switch {
 		case errors.Is(err, wsl.ErrDistroNotRunning), err == nil:
+			log.Infof("removing old distro: %s", opt.DistroName)
 			if err := wsl.Unregister(log, opt.DistroName); err != nil {
 				return fmt.Errorf("cannot remove old distro %s: %w", opt.DistroName, err)
 			}
@@ -42,10 +43,12 @@ func updateRootfs(opt *cli.Context, log *logger.Context) error {
 	}()
 
 	tar := filepath.Join(t, "ovm.tar")
+	log.Infof("decompressing rootfs %s to %s", opt.RootfsPath, tar)
 	if err := archiver.Zstd(opt.RootfsPath, tar, true); err != nil {
 		return fmt.Errorf("failed to decompress rootfs: %w", err)
 	}
 
+	log.Infof("importing distro: %s", opt.DistroName)
 	if err := wsl.ImportDistro(log, opt.DistroName, opt.ImageDir, tar); err != nil {
 		return fmt.Errorf("failed to import distro: %w", err)
 	}
@@ -59,6 +62,7 @@ func updateData(opt *cli.Context, log *logger.Context) error {
 		err := wsl.SafeSyncDisk(log, opt.DistroName)
 		switch {
 		case err == nil:
+			log.Infof("shutting down distro: %s", opt.DistroName)
 			if err := wsl.Terminate(log, opt.DistroName); err != nil {
 				return fmt.Errorf("cannot terminate distro %s: %w", opt.DistroName, err)
 			}
@@ -71,16 +75,19 @@ func updateData(opt *cli.Context, log *logger.Context) error {
 
 	dataPath := filepath.Join(opt.ImageDir, "data.vhdx")
 
-	// Remove the old data
+	log.Infof("umounting data: %s", dataPath)
 	if err := wsl.UmountVHDX(log, dataPath); err != nil {
 		return fmt.Errorf("failed to unmount data: %w", err)
 	}
 
+	log.Infof("removing old data: %s", dataPath)
 	if err := os.RemoveAll(dataPath); err != nil {
 		return fmt.Errorf("failed to remove old data: %w", err)
 	}
 
-	if err := vhdx.Create(dataPath, util.DataSize(opt.Name+opt.ImageDir)); err != nil {
+	dataSize := util.DataSize(opt.Name + opt.ImageDir)
+	log.Infof("creating new data: %s, size: %d", dataPath, dataSize)
+	if err := vhdx.Create(dataPath, dataSize); err != nil {
 		return fmt.Errorf("failed to create new data: %w", err)
 	}
 

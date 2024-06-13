@@ -49,25 +49,38 @@ func (c *context) save() error {
 	return nil
 }
 
-func (c *context) needUpdate() (result []types.VersionKey) {
+func (c *context) needUpdate(log *logger.Context) (result []types.VersionKey) {
 	jsonVersion := &context{}
 	data, err := os.ReadFile(c.jsonPath)
 	if err != nil {
+		log.Warnf("failed to read versions.json file: %v", err)
 		return []types.VersionKey{types.VersionRootFS, types.VersionData}
 	}
 
 	if err := json.Unmarshal(data, jsonVersion); err != nil {
+		log.Warnf("failed to unmarshal versions.json file, json content: %s, %v", data, err)
 		_ = os.RemoveAll(c.jsonPath)
 		return []types.VersionKey{types.VersionRootFS, types.VersionData}
 	}
 
-	if jsonVersion.RootFS != c.RootFS ||
-		util.Exists(filepath.Join(c.opt.ImageDir, "ext4.vhdx")) != nil {
+	rootfsPath := filepath.Join(c.opt.ImageDir, "ext4.vhdx")
+	if jsonVersion.RootFS != c.RootFS || util.Exists(rootfsPath) != nil {
+		if jsonVersion.RootFS != c.RootFS {
+			log.Infof("need update rootfs, because version changed: %s -> %s", jsonVersion.RootFS, c.RootFS)
+		} else {
+			log.Infof("need update rootfs, because rootfs not exists: %s", rootfsPath)
+		}
+
 		result = append(result, types.VersionRootFS)
 	}
 
-	if jsonVersion.Data != c.Data ||
-		util.Exists(filepath.Join(c.opt.ImageDir, "data.vhdx")) != nil {
+	dataPath := filepath.Join(c.opt.ImageDir, "data.vhdx")
+	if jsonVersion.Data != c.Data || util.Exists(dataPath) != nil {
+		if jsonVersion.Data != c.Data {
+			log.Infof("need update data, because version changed: %s -> %s", jsonVersion.Data, c.Data)
+		} else {
+			log.Infof("need update data, because data not exists: %s", dataPath)
+		}
 		result = append(result, types.VersionData)
 	}
 
@@ -75,8 +88,9 @@ func (c *context) needUpdate() (result []types.VersionKey) {
 }
 
 func (c *context) CheckAndReplace(log *logger.Context) error {
-	list := c.needUpdate()
+	list := c.needUpdate(log)
 	if len(list) == 0 {
+		log.Info("no need to update versions")
 		return nil
 	}
 
@@ -84,12 +98,14 @@ func (c *context) CheckAndReplace(log *logger.Context) error {
 		if err := updateData(c.opt, log); err != nil {
 			return fmt.Errorf("failed to update data: %w", err)
 		}
+		log.Info("update data success")
 	}
 
 	if slices.Contains(list, types.VersionRootFS) {
 		if err := updateRootfs(c.opt, log); err != nil {
 			return fmt.Errorf("failed to update rootfs: %w", err)
 		}
+		log.Info("update rootfs success")
 	}
 
 	if err := c.save(); err != nil {
