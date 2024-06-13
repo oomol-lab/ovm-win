@@ -33,7 +33,7 @@ func Terminate(log *logger.Context, distroName string) error {
 }
 
 func ImportDistro(log *logger.Context, distroName, installPath, rootfs string) error {
-	if _, err := wslExec(log, "--import", distroName, installPath, rootfs); err != nil {
+	if _, err := wslExec(log, "--import", distroName, installPath, rootfs, "--version", "2"); err != nil {
 		return fmt.Errorf("import distro %s failed: %w", rootfs, err)
 	}
 
