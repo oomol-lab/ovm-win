@@ -4,6 +4,7 @@
 package update
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,14 +20,16 @@ import (
 func updateRootfs(opt *cli.Context, log *logger.Context) error {
 	// Remove the old distro
 	{
-		if ok, err := wsl.IsRegister(log, opt.DistroName); err != nil {
-			return fmt.Errorf("failed to check if distro is registered in update rootfs: %w", err)
-		} else if ok {
-			// To prevent data from not being written to the disk(data.vhdx), we perform a shutdown before deleting the rootfs.
-			_ = wsl.Terminate(log, opt.DistroName)
+		err := wsl.SafeSyncDisk(log, opt.DistroName)
+		switch {
+		case errors.Is(err, wsl.ErrDistroNotRunning), err == nil:
 			if err := wsl.Unregister(log, opt.DistroName); err != nil {
 				return fmt.Errorf("cannot remove old distro %s: %w", opt.DistroName, err)
 			}
+		case errors.Is(err, wsl.ErrDistroNotExist):
+			break
+		default:
+			return fmt.Errorf("cannot remove old distro %s in sync disk step: %w", opt.DistroName, err)
 		}
 	}
 
@@ -53,23 +56,31 @@ func updateRootfs(opt *cli.Context, log *logger.Context) error {
 func updateData(opt *cli.Context, log *logger.Context) error {
 	// Shutdown the distro
 	{
-		// We do not care whether the distro is running; as long as it exists, we will execute the shutdown.
-		if ok, err := wsl.IsRegister(log, opt.DistroName); err != nil {
-			return fmt.Errorf("failed to check if distro is running in update data: %w", err)
-		} else if ok {
+		err := wsl.SafeSyncDisk(log, opt.DistroName)
+		switch {
+		case err == nil:
 			if err := wsl.Terminate(log, opt.DistroName); err != nil {
 				return fmt.Errorf("cannot terminate distro %s: %w", opt.DistroName, err)
 			}
+		case errors.Is(err, wsl.ErrDistroNotExist), errors.Is(err, wsl.ErrDistroNotRunning):
+			break
+		default:
+			return fmt.Errorf("cannot terminate distro %s in sync disk step: %w", opt.DistroName, err)
 		}
 	}
 
 	dataPath := filepath.Join(opt.ImageDir, "data.vhdx")
 
+	// Remove the old data
+	if err := wsl.UmountVHDX(log, dataPath); err != nil {
+		return fmt.Errorf("failed to unmount data: %w", err)
+	}
+
 	if err := os.RemoveAll(dataPath); err != nil {
 		return fmt.Errorf("failed to remove old data: %w", err)
 	}
 
-	if err := vhdx.Create(dataPath, util.DataSize(opt.Name)); err != nil {
+	if err := vhdx.Create(dataPath, util.DataSize(opt.Name+opt.ImageDir)); err != nil {
 		return fmt.Errorf("failed to create new data: %w", err)
 	}
 
