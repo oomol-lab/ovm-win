@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/oomol-lab/ovm-win/pkg/cli"
+	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/util"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
@@ -92,6 +93,8 @@ func enableFeatures(opt *cli.Context, log *logger.Context) error {
 // Update updates WSL2(include kernel)
 func Update(log *logger.Context) error {
 	log.Info("Updating WSL2...")
+
+	event.Notify(event.UpdatingWSL)
 
 	backoff := 500 * time.Millisecond
 	tryCount := 3

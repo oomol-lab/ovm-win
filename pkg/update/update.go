@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/util"
 
@@ -95,6 +96,7 @@ func (c *context) CheckAndReplace(log *logger.Context) error {
 	}
 
 	if slices.Contains(list, types.VersionData) {
+		event.Notify(event.UpdatingData)
 		if err := updateData(c.opt, log); err != nil {
 			return fmt.Errorf("failed to update data: %w", err)
 		}
@@ -102,6 +104,7 @@ func (c *context) CheckAndReplace(log *logger.Context) error {
 	}
 
 	if slices.Contains(list, types.VersionRootFS) {
+		event.Notify(event.UpdatingRootFS)
 		if err := updateRootfs(c.opt, log); err != nil {
 			return fmt.Errorf("failed to update rootfs: %w", err)
 		}
