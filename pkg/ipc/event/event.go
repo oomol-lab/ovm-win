@@ -19,9 +19,14 @@ import (
 type Name string
 
 const (
-	NeedReboot Name = "NeedReboot"
-	Exit       Name = "Exit"
-	Error      Name = "Error"
+	NeedReboot       Name = "NeedReboot"
+	SystemNotSupport Name = "SystemNotSupport"
+	UpdatingWSL      Name = "UpdatingWSL"
+	UpdatingRootFS   Name = "UpdatingRootFS"
+	UpdatingData     Name = "UpdatingData"
+	StartingVM       Name = "StartingVM"
+	Exit             Name = "Exit"
+	Error            Name = "Error"
 )
 
 type datum struct {

@@ -76,6 +76,7 @@ func main() {
 	// WSL2 Check / Install / Update
 	{
 		if !sys.SupportWSL2(log) {
+			event.Notify(event.SystemNotSupport)
 			log.Error("WSL2 is not supported on this system, need Windows 10 version 19043 or higher")
 			exit(1)
 		}
@@ -113,6 +114,10 @@ func main() {
 		cancel()
 		exit(1)
 	}
+
+	event.Notify(event.StartingVM)
+
+	// TODO: Start VM
 
 	go func() {
 		time.Sleep(2 * time.Minute)
