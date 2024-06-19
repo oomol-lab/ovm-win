@@ -79,7 +79,7 @@ func wslVersion(log *logger.Context) (string, error) {
 
 const minVersion = "2.1.5"
 
-func ShouldUpdate(log *logger.Context) (bool, error) {
+func wslShouldUpdate(log *logger.Context) (bool, error) {
 	v, err := wslVersion(log)
 	if err != nil {
 		return false, fmt.Errorf("failed to get WSL2 version: %w", err)

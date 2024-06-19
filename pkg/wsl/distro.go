@@ -3,13 +3,19 @@ package wsl
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/oomol-lab/ovm-win/pkg/cli"
+	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
+	"github.com/oomol-lab/ovm-win/pkg/podman"
 	"github.com/oomol-lab/ovm-win/pkg/util"
+	"golang.org/x/sync/errgroup"
 )
 
 var ErrDistroNotExist = errors.New("distro does not exist")
@@ -116,6 +122,85 @@ func UmountVHDX(log *logger.Context, path string) error {
 	}
 
 	return nil
+}
+
+func Launch(ctx context.Context, log *logger.Context, opt *cli.Context) error {
+	event.Notify(event.StartingVM)
+
+	dataPath := filepath.Join(opt.ImageDir, "data.vhdx")
+	if err := MountVHDX(log, dataPath); err != nil {
+		return fmt.Errorf("failed to mount data.vhdx: %w", err)
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		return launchOVMD(ctx, log, opt)
+	})
+	g.Go(func() error {
+		if err := podman.Ready(ctx, opt.PodmanPort); err != nil {
+			return fmt.Errorf("podman is not ready: %w", err)
+		}
+
+		event.Notify(event.Ready)
+		return nil
+	})
+
+	return g.Wait()
+}
+
+func launchOVMD(ctx context.Context, log *logger.Context, opt *cli.Context) error {
+	vmLog, err := log.NewWithoutName("vm")
+	if err != nil {
+		return fmt.Errorf("could not create vm logger: %w", err)
+	}
+
+	dataSector := util.DataSize(opt.Name+opt.ImageDir) / 512
+	// See: https://github.com/oomol-lab/ovm-builder/blob/main/scripts/ovmd
+	cmd := util.SilentCmdContext(ctx, Find(),
+		"-d", opt.DistroName,
+		"/opt/ovmd",
+		"-p", fmt.Sprintf("%d", opt.PodmanPort),
+		"-s", fmt.Sprintf("%d", dataSector),
+	)
+	cmd.Env = []string{"WSL_UTF8=1"}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("could not get stdout pipe: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("could not get stderr pipe: %w", err)
+	}
+	defer func() {
+		_ = stdout.Close()
+		_ = stderr.Close()
+	}()
+
+	log.Infof("Launching %s: podman port is: %d, data sector count: %d", opt.DistroName, opt.PodmanPort, dataSector)
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start `%s`: %w", opt.DistroName, err)
+	}
+
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			vmLog.Info(scanner.Text())
+		}
+	}()
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			vmLog.Warn(scanner.Text())
+		}
+	}()
+
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("failed to launch ovmd for `%s`: %s", opt.DistroName, err)
+	}
+
+	return fmt.Errorf("ovmd unexpected closed")
 }
 
 // GetAllWSLDistros returns all WSL distros

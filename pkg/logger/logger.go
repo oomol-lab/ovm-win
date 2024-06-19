@@ -155,6 +155,10 @@ func (c *Context) useExistLog() error {
 	return fmt.Errorf("cannot find latest log file in: %s", c.path)
 }
 
+func (c *Context) NewWithoutName(name string) (*Context, error) {
+	return New(c.path, name)
+}
+
 func (c *Context) base(t, message string) {
 	d := time.Now().Format("2006-01-02 15:04:05.000")
 	if c.isChild {
@@ -181,13 +185,14 @@ func (c *Context) Warnf(format string, args ...any) {
 	c.Warn(fmt.Sprintf(format, args...))
 }
 
-func (c *Context) Error(message string) {
+func (c *Context) Error(message string) error {
 	c.base("ERROR", message)
 	_ = c.file.Sync()
+	return fmt.Errorf(message)
 }
 
-func (c *Context) Errorf(format string, args ...any) {
-	c.Error(fmt.Sprintf(format, args...))
+func (c *Context) Errorf(format string, args ...any) error {
+	return c.Error(fmt.Sprintf(format, args...))
 }
 
 func (c *Context) Close() {

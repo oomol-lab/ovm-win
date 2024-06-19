@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/oomol-lab/ovm-win/pkg/types"
+	"github.com/oomol-lab/ovm-win/pkg/util"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
 	"golang.org/x/sync/errgroup"
 )
@@ -26,6 +27,7 @@ type Context struct {
 	RestfulEndpoint   string
 	EventSocketPath   string
 	CanReboot         bool
+	PodmanPort        int
 }
 
 func Setup() (*Context, error) {
@@ -40,6 +42,7 @@ func Setup() (*Context, error) {
 	g.Go(ctx.logPath)
 	g.Go(ctx.process)
 	g.Go(ctx.update)
+	g.Go(ctx.port)
 
 	return ctx, g.Wait()
 }
@@ -117,5 +120,19 @@ func (c *Context) update() error {
 	}
 
 	c.Version = version
+	return nil
+}
+
+// just a random port
+const podmanStartPort = 7591
+
+func (c *Context) port() error {
+	p, err := util.FindUsablePort(podmanStartPort)
+	if err != nil {
+		return fmt.Errorf("failed to find a usable port: %v", err)
+	}
+
+	c.PodmanPort = p
+
 	return nil
 }
