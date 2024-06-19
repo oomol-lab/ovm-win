@@ -5,6 +5,7 @@ package util
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -29,6 +30,12 @@ func Silent(log *logger.Context, command string, args ...string) error {
 
 func SilentCmd(command string, args ...string) *exec.Cmd {
 	cmd := exec.Command(command, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: flagsCreateNoWindow}
+	return cmd
+}
+
+func SilentCmdContext(ctx context.Context, command string, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: flagsCreateNoWindow}
 	return cmd
 }

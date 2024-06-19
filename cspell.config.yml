@@ -5,6 +5,9 @@ words:
   - lxss
   - eerr
   - zstd
+  - ovmd
+  - errgroup
+  - Tful
 
   # pkg/winapi
   - winapi

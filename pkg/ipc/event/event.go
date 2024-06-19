@@ -25,6 +25,7 @@ const (
 	UpdatingRootFS   Name = "UpdatingRootFS"
 	UpdatingData     Name = "UpdatingData"
 	StartingVM       Name = "StartingVM"
+	Ready            Name = "Ready"
 	Exit             Name = "Exit"
 	Error            Name = "Error"
 )

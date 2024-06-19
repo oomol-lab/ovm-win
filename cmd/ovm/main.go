@@ -5,9 +5,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
@@ -20,8 +20,7 @@ import (
 )
 
 var (
-	opt    *cli.Context
-	cleans []func()
+	opt *cli.Context
 )
 
 func init() {
@@ -62,7 +61,7 @@ func main() {
 		exit(1)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancelCause(context.Background())
 	g, ctx := errgroup.WithContext(ctx)
 
 	if !opt.IsElevatedProcess {
@@ -73,59 +72,37 @@ func main() {
 
 	event.Setup(log, opt.EventSocketPath)
 
-	// WSL2 Check / Install / Update
-	{
-		if !sys.SupportWSL2(log) {
-			event.Notify(event.SystemNotSupport)
-			log.Error("WSL2 is not supported on this system, need Windows 10 version 19043 or higher")
-			exit(1)
-		}
-
-		if err := wsl.Install(opt, log); err != nil {
-			if wsl.IsNeedReboot(err) {
-				log.Info("Need reboot system")
-				event.Notify(event.NeedReboot)
+	if err := wsl.Setup(opt, log); err != nil {
+		if opt.IsElevatedProcess {
+			if wsl.ErrIsNeedReboot(err) {
 				exit(0)
 			}
 
-			log.Error(fmt.Sprintf("Failed to install WSL2: %v", err))
+			_ = log.Error(err.Error())
 			exit(1)
 		}
 
-		shouldUpdate, err := wsl.ShouldUpdate(log)
-		if err != nil {
-			log.Error(fmt.Sprintf("Failed to check if WSL2 needs to be updated: %v", err))
-			exit(1)
-		}
+		cancel(err)
+	}
 
-		if shouldUpdate {
-			if err := wsl.Update(log); err != nil {
-				log.Error(fmt.Sprintf("Failed to update WSL2: %v", err))
-				exit(1)
-			}
-			log.Info("WSL2 has been updated")
-		} else {
-			log.Info("WSL2 is up to date")
+	if ctx.Err() == nil {
+		if err := update.New(opt).CheckAndReplace(log); err != nil {
+			cancel(log.Errorf("Failed to update: %v", err))
 		}
 	}
 
-	if err := update.New(opt).CheckAndReplace(log); err != nil {
-		log.Errorf("Failed to update: %v", err)
-		cancel()
-		exit(1)
+	if ctx.Err() == nil {
+		g.Go(func() error {
+			return wsl.Launch(ctx, log, opt)
+		})
 	}
-
-	event.Notify(event.StartingVM)
-
-	// TODO: Start VM
-
-	go func() {
-		time.Sleep(2 * time.Minute)
-		cancel()
-	}()
 
 	if err := g.Wait(); err != nil {
-		log.Errorf("Main error: %v", err)
+		if errors.Is(err, context.Canceled) {
+			err = fmt.Errorf("canceled, err: %w, reason: %w", err, context.Cause(ctx))
+		}
+
+		err = log.Errorf("Main error: %v", err)
 		event.NotifyError(err)
 		exit(1)
 	} else {
@@ -140,8 +117,5 @@ func exit(exitCode int) {
 	}
 
 	logger.CloseAll()
-	for _, clean := range cleans {
-		clean()
-	}
 	os.Exit(exitCode)
 }

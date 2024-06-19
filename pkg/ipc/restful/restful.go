@@ -37,21 +37,25 @@ func (r *restful) start(ctx context.Context) error {
 
 	r.log.Infof("RESTful server is ready to run on %s", r.opt.RestfulEndpoint)
 
-	go func() {
-		<-ctx.Done()
+	stop := context.AfterFunc(ctx, func() {
 		_ = nl.Close()
 		r.log.Info("RESTful server is shutting down, because the context is done")
-	}()
+	})
+	defer stop()
 
 	server := &http.Server{
 		Handler: r.mux(),
 	}
 
-	if err := server.Serve(nl); err != nil && ctx.Err() == nil {
+	if err := server.Serve(nl); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
 		return fmt.Errorf("failed to serve restful server: %w", err)
 	}
 
-	return nil
+	return fmt.Errorf("restful server is closed")
 }
 
 func (r *restful) mux() http.Handler {

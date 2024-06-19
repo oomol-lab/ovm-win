@@ -20,14 +20,14 @@ var (
 	needRebootErr = errors.New("need reboot")
 )
 
-func IsNeedReboot(err error) bool {
+func ErrIsNeedReboot(err error) bool {
 	return errors.Is(err, needRebootErr)
 }
 
-// Install installs WSL2 feature and update kernel
+// installWSL installs WSL2 feature and update kernel
 //
 // Enable feature need admin privileges and reboot, update kernel need WSL2 feature enabled
-func Install(opt *cli.Context, log *logger.Context) error {
+func installWSL(opt *cli.Context, log *logger.Context) error {
 	isFeatureEnabled := isFeatureEnabled(log)
 	isInstalled := isInstalled(log)
 
@@ -61,7 +61,7 @@ func Install(opt *cli.Context, log *logger.Context) error {
 
 	log.Info("WSL2 is not updated, ready to update")
 
-	if err := Update(log); err != nil {
+	if err := wslUpdate(log); err != nil {
 		return fmt.Errorf("failed to update WSL2: %w", err)
 	}
 
@@ -90,8 +90,8 @@ func enableFeatures(opt *cli.Context, log *logger.Context) error {
 	return nil
 }
 
-// Update updates WSL2(include kernel)
-func Update(log *logger.Context) error {
+// wslUpdate updates WSL2(include kernel)
+func wslUpdate(log *logger.Context) error {
 	log.Info("Updating WSL2...")
 
 	event.Notify(event.UpdatingWSL)
