@@ -12,7 +12,6 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/util"
-	"github.com/oomol-lab/ovm-win/pkg/util/archiver"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/vhdx"
 	"github.com/oomol-lab/ovm-win/pkg/wsl"
 )
@@ -34,22 +33,8 @@ func updateRootfs(opt *cli.Context, log *logger.Context) error {
 		}
 	}
 
-	t, err := os.MkdirTemp(os.TempDir(), "ovm-")
-	if err != nil {
-		return fmt.Errorf("failed to create temp dir, %s: %w", t, err)
-	}
-	defer func() {
-		_ = os.RemoveAll(t)
-	}()
-
-	tar := filepath.Join(t, "ovm.tar")
-	log.Infof("decompressing rootfs %s to %s", opt.RootfsPath, tar)
-	if err := archiver.Zstd(opt.RootfsPath, tar, true); err != nil {
-		return fmt.Errorf("failed to decompress rootfs: %w", err)
-	}
-
-	log.Infof("importing distro: %s", opt.DistroName)
-	if err := wsl.ImportDistro(log, opt.DistroName, opt.ImageDir, tar); err != nil {
+	log.Infof("importing distro %s from %s", opt.DistroName, opt.RootfsPath)
+	if err := wsl.ImportDistro(log, opt.DistroName, opt.ImageDir, opt.RootfsPath); err != nil {
 		return fmt.Errorf("failed to import distro: %w", err)
 	}
 
