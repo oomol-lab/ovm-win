@@ -20,8 +20,6 @@ func Setup(opt *cli.Context, log *logger.Context) error {
 
 	if err := installWSL(opt, log); err != nil {
 		if ErrIsNeedReboot(err) {
-			log.Info("Need reboot system")
-			event.Notify(event.NeedReboot)
 			return err
 		}
 
