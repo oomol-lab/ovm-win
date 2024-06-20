@@ -47,7 +47,7 @@ func installWSL(opt *cli.Context, log *logger.Context) error {
 
 			log.Info("Admin process already successfully executed and exited")
 			opt.CanReboot = true
-			return nil
+			return needRebootErr
 		}
 
 		log.Info("Ready to enable WSL2 feature")

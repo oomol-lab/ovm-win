@@ -82,6 +82,15 @@ func main() {
 			exit(1)
 		}
 
+		if wsl.ErrIsNeedReboot(err) {
+			log.Info("Need reboot system")
+			event.Notify(event.NeedReboot)
+
+			// Wait for the reboot event to be processed.
+			// Before restarting the system,we should not perform any operations because the WSL environment is not ready yet.
+			goto WAIT
+		}
+
 		cancel(err)
 	}
 
@@ -97,6 +106,7 @@ func main() {
 		})
 	}
 
+WAIT:
 	if err := g.Wait(); err != nil {
 		if errors.Is(err, context.Canceled) {
 			err = fmt.Errorf("canceled, err: %w, reason: %w", err, context.Cause(ctx))
