@@ -118,6 +118,10 @@ func UmountVHDX(log *logger.Context, path string) error {
 	}
 
 	if _, err := wslExec(log, "--unmount", path); err != nil {
+		if strings.Contains(err.Error(), "DetachDisk/ERROR_FILE_NOT_FOUND") {
+			log.Infof("vhdx already unmounted: %s", path)
+			return nil
+		}
 		return fmt.Errorf("wsl umount %s failed: %w", path, err)
 	}
 
@@ -125,7 +129,7 @@ func UmountVHDX(log *logger.Context, path string) error {
 }
 
 func Launch(ctx context.Context, log *logger.Context, opt *cli.Context) error {
-	event.Notify(event.StartingVM)
+	event.NotifyApp(event.StartingVM)
 
 	dataPath := filepath.Join(opt.ImageDir, "data.vhdx")
 	if err := MountVHDX(log, dataPath); err != nil {
@@ -141,7 +145,7 @@ func Launch(ctx context.Context, log *logger.Context, opt *cli.Context) error {
 			return fmt.Errorf("podman is not ready: %w", err)
 		}
 
-		event.Notify(event.Ready)
+		event.NotifyApp(event.Ready)
 		return nil
 	})
 

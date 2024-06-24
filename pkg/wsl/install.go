@@ -16,61 +16,58 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
 )
 
-var (
-	needRebootErr = errors.New("need reboot")
-)
-
-func ErrIsNeedReboot(err error) bool {
-	return errors.Is(err, needRebootErr)
-}
-
-// installWSL installs WSL2 feature and update kernel
+// Install installs WSL2 feature
 //
-// Enable feature need admin privileges and reboot, update kernel need WSL2 feature enabled
-func installWSL(opt *cli.Context, log *logger.Context) error {
-	isFeatureEnabled := isFeatureEnabled(log)
-	isInstalled := isInstalled(log)
+// Enable feature need admin privileges and reboot
+func Install(opt *cli.Context, log *logger.Context) error {
+	if !opt.IsElevatedProcess {
+		event.NotifySys(event.EnableFeaturing)
+	}
 
-	if isFeatureEnabled && isInstalled {
-		log.Info("WSL2 is already installed")
+	if !sys.IsAdmin() {
+		log.Info("Current process is not running with admin privileges, will open a new process with admin privileges")
+		if err := sys.RunAsAdminWait(); err != nil {
+			opt.CanEnableFeature = true
+			event.NotifySys(event.EnableFeatureFailed)
+			return fmt.Errorf("failed to run as admin: %w", err)
+		}
+
+		log.Info("Admin process already successfully executed and exited")
+		opt.CanEnableFeature = false
+		opt.CanReboot = true
+		event.NotifySys(event.EnableFeatureSuccess)
+		event.NotifySys(event.NeedReboot)
 		return nil
 	}
 
-	if !isFeatureEnabled {
-		log.Info("WSL2 feature is not enabled")
+	log.Info("Ready to enable WSL2 feature")
+	if err := doEnableFeature(opt, log); err != nil {
+		wrapperErr := fmt.Errorf("failed to enable WSL2 feature: %w", err)
 
-		if !sys.IsAdmin() {
-			log.Info("Current process is not running with admin privileges, will open a new process with admin privileges")
-			if err := sys.RunAsAdminWait(); err != nil {
-				return fmt.Errorf("failed to run as admin: %w", err)
-			}
-
-			log.Info("Admin process already successfully executed and exited")
-			opt.CanReboot = true
-			return needRebootErr
+		if opt.IsElevatedProcess {
+			_ = log.Errorf(wrapperErr.Error())
+			util.Exit(1)
 		}
 
-		log.Info("Ready to enable WSL2 feature")
-		if err := enableFeatures(opt, log); err != nil {
-			return fmt.Errorf("failed to enable features: %w", err)
-		}
-
-		log.Info("WSL2 feature enabled successfully, need reboot system")
-		return needRebootErr
+		opt.CanEnableFeature = true
+		event.NotifySys(event.EnableFeatureFailed)
+		return wrapperErr
 	}
 
-	log.Info("WSL2 is not updated, ready to update")
+	log.Info("WSL2 feature enabled successfully, need reboot system")
 
-	if err := wslUpdate(log); err != nil {
-		return fmt.Errorf("failed to update WSL2: %w", err)
+	if opt.IsElevatedProcess {
+		util.Exit(0)
 	}
 
-	log.Info("WSL2 kernel updated successfully")
-
+	opt.CanEnableFeature = false
+	opt.CanReboot = true
+	event.NotifySys(event.EnableFeatureSuccess)
+	event.NotifySys(event.NeedReboot)
 	return nil
 }
 
-func enableFeatures(opt *cli.Context, log *logger.Context) error {
+func doEnableFeature(opt *cli.Context, log *logger.Context) error {
 	logPath, err := logger.NewOnlyCreate(opt.LogPath, opt.Name+"-dism")
 	if err != nil {
 		return fmt.Errorf("failed to create logger in dism: %w", err)
@@ -90,17 +87,20 @@ func enableFeatures(opt *cli.Context, log *logger.Context) error {
 	return nil
 }
 
-// wslUpdate updates WSL2(include kernel)
-func wslUpdate(log *logger.Context) error {
+// Update updates WSL2(include kernel)
+func Update(opt *cli.Context, log *logger.Context) error {
 	log.Info("Updating WSL2...")
 
-	event.Notify(event.UpdatingWSL)
+	event.NotifySys(event.UpdatingWSL)
 
 	backoff := 500 * time.Millisecond
 	tryCount := 3
 	for i := 1; i <= tryCount; i++ {
 		err := util.Silent(log, Find(), "--update")
 		if err == nil {
+			opt.CanUpdateWSL = false
+			event.NotifySys(event.UpdateWSLSuccess)
+			log.Info("WSL2 has been updated")
 			return nil
 		}
 
@@ -115,6 +115,8 @@ func wslUpdate(log *logger.Context) error {
 		backoff *= 2
 	}
 
+	opt.CanUpdateWSL = true
+	event.NotifySys(event.UpdateWSLFailed)
 	return fmt.Errorf("failed to update WSL2")
 }
 

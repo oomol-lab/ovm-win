@@ -27,6 +27,8 @@ type Context struct {
 	RestfulEndpoint   string
 	EventSocketPath   string
 	CanReboot         bool
+	CanEnableFeature  bool
+	CanUpdateWSL      bool
 	PodmanPort        int
 }
 
