@@ -153,7 +153,7 @@ func Launch(ctx context.Context, log *logger.Context, opt *cli.Context) error {
 }
 
 func launchOVMD(ctx context.Context, log *logger.Context, opt *cli.Context) error {
-	vmLog, err := log.NewWithoutName("vm")
+	vmLog, err := log.NewWithAppendName("vm")
 	if err != nil {
 		return fmt.Errorf("could not create vm logger: %w", err)
 	}
