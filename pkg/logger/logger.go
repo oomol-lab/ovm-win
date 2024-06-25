@@ -155,8 +155,8 @@ func (c *Context) useExistLog() error {
 	return fmt.Errorf("cannot find latest log file in: %s", c.path)
 }
 
-func (c *Context) NewWithoutName(name string) (*Context, error) {
-	return New(c.path, name)
+func (c *Context) NewWithAppendName(name string) (*Context, error) {
+	return New(c.path, c.name+"-"+name)
 }
 
 func (c *Context) base(t, message string) {
