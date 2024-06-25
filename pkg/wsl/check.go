@@ -7,10 +7,16 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/go-version"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/util"
+)
+
+var (
+	_onceIsFeatureEnabled sync.Once
+	_isFeatureEnabled     bool
 )
 
 func existsKernel() bool {
@@ -54,10 +60,14 @@ func isInstalled(log *logger.Context) bool {
 //  1. `Microsoft-Windows-Subsystem-Linux`
 //  2. `VirtualMachinePlatform`
 func isFeatureEnabled(log *logger.Context) bool {
-	// we cannot use the following methods for checking because these commands require administrative privileges.
-	// 	1.Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
-	// 	2.Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
-	return util.Silent(log, Find(), "--set-default-version", "2") == nil
+	_onceIsFeatureEnabled.Do(func() {
+		// we cannot use the following methods for checking because these commands require administrative privileges.
+		// 	1.Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+		// 	2.Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
+		_isFeatureEnabled = util.Silent(log, Find(), "--set-default-version", "2") == nil
+	})
+
+	return _isFeatureEnabled
 }
 
 func wslVersion(log *logger.Context) (string, error) {
@@ -79,7 +89,12 @@ func wslVersion(log *logger.Context) (string, error) {
 
 const minVersion = "2.1.5"
 
-func wslShouldUpdate(log *logger.Context) (bool, error) {
+func shouldUpdateWSL(log *logger.Context) (bool, error) {
+	if isInstalled := isInstalled(log); !isInstalled {
+		log.Info("WSL2 is not updated, ready to update")
+		return true, nil
+	}
+
 	v, err := wslVersion(log)
 	if err != nil {
 		return false, fmt.Errorf("failed to get WSL2 version: %w", err)

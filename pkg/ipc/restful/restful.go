@@ -7,38 +7,49 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 
+	"github.com/oomol-lab/ovm-win/pkg/channel"
 	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/npipe"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
+	"github.com/oomol-lab/ovm-win/pkg/wsl"
 )
 
 type restful struct {
 	log *logger.Context
 	opt *cli.Context
+	ctx context.Context
+	nl  net.Listener
 }
 
-func Run(ctx context.Context, opt *cli.Context, log *logger.Context) error {
-	r := &restful{
+type Run interface {
+	Run() error
+}
+
+func Setup(ctx context.Context, opt *cli.Context, log *logger.Context) (r Run, err error) {
+	nl, err := npipe.Create(opt.RestfulEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create npipe listener: %w", err)
+	}
+
+	r = &restful{
 		log: log,
 		opt: opt,
+		ctx: ctx,
+		nl:  nl,
 	}
 
-	return r.start(ctx)
+	return r, nil
 }
 
-func (r *restful) start(ctx context.Context) error {
-	nl, err := npipe.Create(r.opt.RestfulEndpoint)
-	if err != nil {
-		return fmt.Errorf("failed to create npipe listener: %w", err)
-	}
-
+func (r *restful) Run() error {
 	r.log.Infof("RESTful server is ready to run on %s", r.opt.RestfulEndpoint)
 
-	stop := context.AfterFunc(ctx, func() {
-		_ = nl.Close()
+	stop := context.AfterFunc(r.ctx, func() {
+		_ = r.nl.Close()
 		r.log.Info("RESTful server is shutting down, because the context is done")
 	})
 	defer stop()
@@ -47,9 +58,9 @@ func (r *restful) start(ctx context.Context) error {
 		Handler: r.mux(),
 	}
 
-	if err := server.Serve(nl); err != nil {
-		if ctx.Err() != nil {
-			return ctx.Err()
+	if err := server.Serve(r.nl); err != nil {
+		if r.ctx.Err() != nil {
+			return r.ctx.Err()
 		}
 
 		return fmt.Errorf("failed to serve restful server: %w", err)
@@ -61,6 +72,8 @@ func (r *restful) start(ctx context.Context) error {
 func (r *restful) mux() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/reboot", mustPost(r.log, middlewareLog(r.log, r.reboot)))
+	mux.Handle("/enable-feature", mustPost(r.log, middlewareLog(r.log, r.enableFeature)))
+	mux.Handle("/update-wsl", mustPut(r.log, middlewareLog(r.log, r.updateWSL)))
 	return mux
 }
 
@@ -100,6 +113,36 @@ func (r *restful) reboot(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (r *restful) enableFeature(w http.ResponseWriter, req *http.Request) {
+	if !r.opt.CanEnableFeature {
+		r.log.Warn("Enable feature is not allowed")
+		http.Error(w, "enable feature is not allowed", http.StatusForbidden)
+		return
+	}
+
+	if err := wsl.Install(r.opt, r.log); err != nil {
+		r.log.Warnf("Failed to enable feature: %v", err)
+		http.Error(w, "failed to enable feature", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (r *restful) updateWSL(w http.ResponseWriter, req *http.Request) {
+	if !r.opt.CanUpdateWSL {
+		r.log.Warn("Update WSL is not allowed")
+		http.Error(w, "update WSL is not allowed", http.StatusForbidden)
+		return
+	}
+
+	if err := wsl.Update(r.opt, r.log); err != nil {
+		r.log.Warnf("Failed to update WSL: %v", err)
+		http.Error(w, "failed to update WSL", http.StatusInternalServerError)
+		return
+	}
+
+	channel.NotifyWSLEnvReady()
+}
+
 func middlewareLog(log *logger.Context, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		log.Infof("RESTful server: received request: %s", req.URL.Path)
@@ -113,6 +156,17 @@ func mustPost(log *logger.Context, next http.HandlerFunc) http.HandlerFunc {
 		if req.Method != http.MethodPost {
 			log.Warnf("RESTful server: %s is not allowed in %s", req.Method, req.URL.Path)
 			http.Error(w, "post only", http.StatusBadRequest)
+		} else {
+			next.ServeHTTP(w, req)
+		}
+	}
+}
+
+func mustPut(log *logger.Context, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPut {
+			log.Warnf("RESTful server: %s is not allowed in %s", req.Method, req.URL.Path)
+			http.Error(w, "put only", http.StatusBadRequest)
 		} else {
 			next.ServeHTTP(w, req)
 		}

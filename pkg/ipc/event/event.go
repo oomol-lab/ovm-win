@@ -16,22 +16,44 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 )
 
-type Name string
+type key string
 
 const (
-	NeedReboot       Name = "NeedReboot"
-	SystemNotSupport Name = "SystemNotSupport"
-	UpdatingWSL      Name = "UpdatingWSL"
-	UpdatingRootFS   Name = "UpdatingRootFS"
-	UpdatingData     Name = "UpdatingData"
-	StartingVM       Name = "StartingVM"
-	Ready            Name = "Ready"
-	Exit             Name = "Exit"
-	Error            Name = "Error"
+	kSys   key = "sys"
+	kApp   key = "app"
+	kError key = "error"
+)
+
+type sys string
+
+const (
+	SystemNotSupport     sys = "SystemNotSupport"
+	EnableFeaturing      sys = "EnableFeaturing"
+	EnableFeatureFailed  sys = "EnableFeatureFailed"
+	EnableFeatureSuccess sys = "EnableFeatureSuccess"
+	NeedReboot           sys = "NeedReboot"
+	UpdatingWSL          sys = "UpdatingWSL"
+	UpdateWSLFailed      sys = "UpdateWSLFailed"
+	UpdateWSLSuccess     sys = "UpdateWSLSuccess"
+)
+
+type app string
+
+const (
+	UpdatingRootFS      app = "UpdatingRootFS"
+	UpdateRootFSFailed  app = "UpdateRootFSFailed"
+	UpdateRootFSSuccess app = "UpdateRootFSSuccess"
+	UpdatingData        app = "UpdatingData"
+	UpdateDataFailed    app = "UpdateDataFailed"
+	UpdateDataSuccess   app = "UpdateDataSuccess"
+
+	StartingVM app = "StartingVM"
+	Ready      app = "Ready"
+	Exit       app = "Exit"
 )
 
 type datum struct {
-	name    Name
+	name    string
 	message string
 }
 
@@ -76,7 +98,7 @@ func Setup(log *logger.Context, socketPath string) {
 				}
 			}
 
-			if datum.name == Exit || datum.name == NeedReboot {
+			if datum.message == string(Exit) || datum.message == string(NeedReboot) {
 				waitDone <- struct{}{}
 				return
 			}
@@ -84,19 +106,20 @@ func Setup(log *logger.Context, socketPath string) {
 	}()
 }
 
-func Notify(name Name) {
+func notify(k string, v string) {
 	if e == nil {
 		return
 	}
 
 	e.channel.In() <- &datum{
-		name: name,
+		name:    k,
+		message: v,
 	}
 
 	// wait for the event to be processed
 	// Exit event indicates the main process exit
 	// NeedReboot event indicates the child process exit
-	if name == Exit || name == NeedReboot {
+	if v == string(Exit) || v == string(NeedReboot) {
 		e.channel.Close()
 		<-waitDone
 		close(waitDone)
@@ -104,13 +127,14 @@ func Notify(name Name) {
 	}
 }
 
-func NotifyError(err error) {
-	if e == nil {
-		return
-	}
+func NotifySys(v sys) {
+	notify(string(kSys), string(v))
+}
 
-	e.channel.In() <- &datum{
-		name:    Error,
-		message: err.Error(),
-	}
+func NotifyApp(v app) {
+	notify(string(kApp), string(v))
+}
+
+func NotifyError(err error) {
+	notify(string(kError), err.Error())
 }
