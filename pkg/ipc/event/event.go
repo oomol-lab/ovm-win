@@ -53,7 +53,7 @@ const (
 )
 
 type datum struct {
-	name    string
+	name    key
 	message string
 }
 
@@ -106,7 +106,7 @@ func Setup(log *logger.Context, socketPath string) {
 	}()
 }
 
-func notify(k string, v string) {
+func notify(k key, v string) {
 	if e == nil {
 		return
 	}
@@ -120,21 +120,20 @@ func notify(k string, v string) {
 	// Exit event indicates the main process exit
 	// NeedReboot event indicates the child process exit
 	if v == string(Exit) || v == string(NeedReboot) {
-		e.channel.Close()
 		<-waitDone
 		close(waitDone)
-		e = nil
+		e.channel.Close()
 	}
 }
 
 func NotifySys(v sys) {
-	notify(string(kSys), string(v))
+	notify(kSys, string(v))
 }
 
 func NotifyApp(v app) {
-	notify(string(kApp), string(v))
+	notify(kApp, string(v))
 }
 
 func NotifyError(err error) {
-	notify(string(kError), err.Error())
+	notify(kError, err.Error())
 }
