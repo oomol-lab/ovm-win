@@ -27,7 +27,6 @@ func Install(opt *cli.Context, log *logger.Context) error {
 	if !sys.IsAdmin() {
 		log.Info("Current process is not running with admin privileges, will open a new process with admin privileges")
 		if err := sys.RunAsAdminWait(); err != nil {
-			opt.CanEnableFeature = true
 			event.NotifySys(event.EnableFeatureFailed)
 			return fmt.Errorf("failed to run as admin: %w", err)
 		}
@@ -49,7 +48,6 @@ func Install(opt *cli.Context, log *logger.Context) error {
 			util.Exit(1)
 		}
 
-		opt.CanEnableFeature = true
 		event.NotifySys(event.EnableFeatureFailed)
 		return wrapperErr
 	}
@@ -99,8 +97,8 @@ func Update(opt *cli.Context, log *logger.Context) error {
 		err := util.Silent(log, Find(), "--update")
 		if err == nil {
 			opt.CanUpdateWSL = false
-			event.NotifySys(event.UpdateWSLSuccess)
 			log.Info("WSL2 has been updated")
+			event.NotifySys(event.UpdateWSLSuccess)
 			return nil
 		}
 
@@ -115,7 +113,6 @@ func Update(opt *cli.Context, log *logger.Context) error {
 		backoff *= 2
 	}
 
-	opt.CanUpdateWSL = true
 	event.NotifySys(event.UpdateWSLFailed)
 	return fmt.Errorf("failed to update WSL2")
 }

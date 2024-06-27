@@ -129,7 +129,7 @@ func UmountVHDX(log *logger.Context, path string) error {
 }
 
 func Launch(ctx context.Context, log *logger.Context, opt *cli.Context) error {
-	event.NotifyApp(event.StartingVM)
+	event.NotifyApp(event.Starting)
 
 	dataPath := filepath.Join(opt.ImageDir, "data.vhdx")
 	if err := MountVHDX(log, dataPath); err != nil {
