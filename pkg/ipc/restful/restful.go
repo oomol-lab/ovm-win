@@ -71,10 +71,23 @@ func (r *restful) Run() error {
 
 func (r *restful) mux() http.Handler {
 	mux := http.NewServeMux()
+	mux.Handle("/info", mustGet(r.log, middlewareLog(r.log, r.info)))
 	mux.Handle("/reboot", mustPost(r.log, middlewareLog(r.log, r.reboot)))
 	mux.Handle("/enable-feature", mustPost(r.log, middlewareLog(r.log, r.enableFeature)))
 	mux.Handle("/update-wsl", mustPut(r.log, middlewareLog(r.log, r.updateWSL)))
 	return mux
+}
+
+type infoResponse struct {
+	PodmanHost string `json:"podmanHost"`
+	PodmanPort int    `json:"podmanPort"`
+}
+
+func (r *restful) info(w http.ResponseWriter, req *http.Request) {
+	_ = json.NewEncoder(w).Encode(&infoResponse{
+		PodmanHost: "127.0.0.1",
+		PodmanPort: r.opt.PodmanPort,
+	})
 }
 
 type rebootBody struct {
@@ -148,6 +161,17 @@ func middlewareLog(log *logger.Context, next http.HandlerFunc) http.HandlerFunc 
 		log.Infof("RESTful server: received request: %s", req.URL.Path)
 		next.ServeHTTP(w, req)
 		log.Infof("RESTful server: finished request: %s", req.URL.Path)
+	}
+}
+
+func mustGet(log *logger.Context, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			log.Warnf("RESTful server: %s is not allowed in %s", req.Method, req.URL.Path)
+			http.Error(w, "get only", http.StatusBadRequest)
+		} else {
+			next.ServeHTTP(w, req)
+		}
 	}
 }
 
