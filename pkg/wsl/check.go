@@ -10,6 +10,9 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-version"
+	"github.com/oomol-lab/ovm-win/pkg/channel"
+	"github.com/oomol-lab/ovm-win/pkg/cli"
+	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/util"
 )
@@ -18,6 +21,34 @@ var (
 	_onceIsFeatureEnabled sync.Once
 	_isFeatureEnabled     bool
 )
+
+func Check(opt *cli.Context, log *logger.Context) {
+	if isEnabled := isFeatureEnabled(log); !isEnabled {
+		log.Info("WSL2 feature is not enabled")
+		event.NotifySys(event.NeedEnableFeature)
+		opt.CanEnableFeature = true
+		return
+	}
+
+	log.Info("WSL2 feature is already enabled")
+
+	shouldUpdate, err := shouldUpdateWSL(log)
+	if err == nil && !shouldUpdate {
+		log.Info("WSL2 is up to date")
+		channel.NotifyWSLEnvReady()
+		return
+	}
+
+	if err != nil {
+		log.Warnf("Failed to check if WSL2 needs to be updated: %v", err)
+	} else {
+		log.Info("WSL2 needs to be updated")
+	}
+
+	event.NotifySys(event.NeedUpdateWSL)
+	opt.CanUpdateWSL = true
+	return
+}
 
 func existsKernel() bool {
 	// from `MSI` or `Windows Update`
