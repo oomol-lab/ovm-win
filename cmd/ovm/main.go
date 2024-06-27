@@ -91,14 +91,10 @@ func main() {
 			return
 		}
 
-		g.Go(func() error {
-			return r.Run()
-		})
+		g.Go(r.Run)
 	}
 
-	if err := wsl.Setup(opt, log); err != nil {
-		log.Warnf("Failed to setup WSL: %v", err)
-	}
+	wsl.Check(opt, log)
 
 	select {
 	case <-channel.ReceiveWSLEnvReady():

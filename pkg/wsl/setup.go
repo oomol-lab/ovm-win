@@ -4,42 +4,36 @@
 package wsl
 
 import (
-	"fmt"
-
 	"github.com/oomol-lab/ovm-win/pkg/channel"
 	"github.com/oomol-lab/ovm-win/pkg/cli"
+	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 )
 
-// Setup sets up WSL2 environment
-func Setup(opt *cli.Context, log *logger.Context) (err error) {
+func Check(opt *cli.Context, log *logger.Context) {
 	if isEnabled := isFeatureEnabled(log); !isEnabled {
 		log.Info("WSL2 feature is not enabled")
-
-		if err := Install(opt, log); err != nil {
-			return fmt.Errorf("failed to install WSL2: %w", err)
-		}
-
-		return nil
+		event.NotifySys(event.NeedEnableFeature)
+		opt.CanEnableFeature = true
+		return
 	}
 
 	log.Info("WSL2 feature is already enabled")
 
 	shouldUpdate, err := shouldUpdateWSL(log)
-	if err != nil {
-		opt.CanUpdateWSL = true
-		return fmt.Errorf("failed to check if WSL2 needs to be updated: %w", err)
-	}
-
-	if shouldUpdate {
-		if err := Update(opt, log); err != nil {
-			return fmt.Errorf("failed to update WSL2: %w", err)
-		}
-		log.Info("WSL2 has been updated")
-	} else {
+	if err == nil && !shouldUpdate {
 		log.Info("WSL2 is up to date")
+		channel.NotifyWSLEnvReady()
+		return
 	}
 
-	channel.NotifyWSLEnvReady()
-	return nil
+	if err != nil {
+		log.Warnf("Failed to check if WSL2 needs to be updated: %v", err)
+	} else {
+		log.Info("WSL2 needs to be updated")
+	}
+
+	event.NotifySys(event.NeedUpdateWSL)
+	opt.CanUpdateWSL = true
+	return
 }

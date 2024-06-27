@@ -27,14 +27,18 @@ const (
 type sys string
 
 const (
-	SystemNotSupport     sys = "SystemNotSupport"
+	SystemNotSupport sys = "SystemNotSupport"
+
+	NeedEnableFeature    sys = "NeedEnableFeature"
 	EnableFeaturing      sys = "EnableFeaturing"
 	EnableFeatureFailed  sys = "EnableFeatureFailed"
 	EnableFeatureSuccess sys = "EnableFeatureSuccess"
 	NeedReboot           sys = "NeedReboot"
-	UpdatingWSL          sys = "UpdatingWSL"
-	UpdateWSLFailed      sys = "UpdateWSLFailed"
-	UpdateWSLSuccess     sys = "UpdateWSLSuccess"
+
+	NeedUpdateWSL    sys = "NeedUpdateWSL"
+	UpdatingWSL      sys = "UpdatingWSL"
+	UpdateWSLFailed  sys = "UpdateWSLFailed"
+	UpdateWSLSuccess sys = "UpdateWSLSuccess"
 )
 
 type app string
@@ -43,13 +47,14 @@ const (
 	UpdatingRootFS      app = "UpdatingRootFS"
 	UpdateRootFSFailed  app = "UpdateRootFSFailed"
 	UpdateRootFSSuccess app = "UpdateRootFSSuccess"
-	UpdatingData        app = "UpdatingData"
-	UpdateDataFailed    app = "UpdateDataFailed"
-	UpdateDataSuccess   app = "UpdateDataSuccess"
 
-	StartingVM app = "StartingVM"
-	Ready      app = "Ready"
-	Exit       app = "Exit"
+	UpdatingData      app = "UpdatingData"
+	UpdateDataFailed  app = "UpdateDataFailed"
+	UpdateDataSuccess app = "UpdateDataSuccess"
+
+	Starting app = "Starting"
+	Ready    app = "Ready"
+	Exit     app = "Exit"
 )
 
 type datum struct {
