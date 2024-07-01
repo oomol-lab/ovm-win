@@ -128,6 +128,30 @@ func UmountVHDX(log *logger.Context, path string) error {
 	return nil
 }
 
+func RequestStop(log *logger.Context, name string) error {
+	_ = SyncDisk(log, name)
+
+	if err := wslInvoke(log, name, "/opt/ovmd", "--killall"); err != nil {
+		return fmt.Errorf("failed to request stop: %w", err)
+	}
+
+	if err := Terminate(log, name); err != nil {
+		return fmt.Errorf("failed to terminate in request stop: %w", err)
+	}
+
+	return nil
+}
+
+func Stop(log *logger.Context, name string) error {
+	_ = SyncDisk(log, name)
+
+	if err := Terminate(log, name); err != nil {
+		return fmt.Errorf("failed to terminate in stop: %w", err)
+	}
+
+	return nil
+}
+
 func Launch(ctx context.Context, log *logger.Context, opt *cli.Context) error {
 	event.NotifyApp(event.Starting)
 

@@ -75,6 +75,9 @@ func (r *restful) mux() http.Handler {
 	mux.Handle("/reboot", mustPost(r.log, middlewareLog(r.log, r.reboot)))
 	mux.Handle("/enable-feature", mustPost(r.log, middlewareLog(r.log, r.enableFeature)))
 	mux.Handle("/update-wsl", mustPut(r.log, middlewareLog(r.log, r.updateWSL)))
+	mux.Handle("/request-stop", mustPost(r.log, middlewareLog(r.log, r.requestStop)))
+	mux.Handle("/stop", mustPost(r.log, middlewareLog(r.log, r.stop)))
+
 	return mux
 }
 
@@ -154,6 +157,22 @@ func (r *restful) updateWSL(w http.ResponseWriter, req *http.Request) {
 	}
 
 	channel.NotifyWSLEnvReady()
+}
+
+func (r *restful) requestStop(w http.ResponseWriter, req *http.Request) {
+	if err := wsl.RequestStop(r.log, r.opt.DistroName); err != nil {
+		r.log.Warnf("Failed to request stop: %v", err)
+		http.Error(w, "failed to request stop", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (r *restful) stop(w http.ResponseWriter, req *http.Request) {
+	if err := wsl.Stop(r.log, r.opt.DistroName); err != nil {
+		r.log.Warnf("Failed to stop: %v", err)
+		http.Error(w, "failed to stop", http.StatusInternalServerError)
+		return
+	}
 }
 
 func middlewareLog(log *logger.Context, next http.HandlerFunc) http.HandlerFunc {
