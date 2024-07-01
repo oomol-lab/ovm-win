@@ -63,6 +63,11 @@ func main() {
 
 	event.Setup(log, opt.EventSocketPath)
 
+	if opt.IsElevatedProcess {
+		_ = wsl.Install(opt, log)
+		util.Exit(0)
+	}
+
 	ctx, cancel := context.WithCancelCause(context.Background())
 	g, ctx := errgroup.WithContext(ctx)
 	defer func() {
