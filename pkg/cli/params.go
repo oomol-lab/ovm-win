@@ -15,6 +15,7 @@ var (
 	rootfsPath     string
 	versions       string
 	eventNpipeName string
+	bindPID        int
 )
 
 func parse() error {
@@ -24,6 +25,7 @@ func parse() error {
 	flag.StringVar(&rootfsPath, "rootfs-path", "", "Path to rootfs image")
 	flag.StringVar(&versions, "versions", "", "Set versions")
 	flag.StringVar(&eventNpipeName, "event-npipe-name", "", "HTTP server established in the named pipe (such as the foo in //./pipe/foo) must implement the GET /notify?event=&message= route")
+	flag.IntVar(&bindPID, "bind-pid", 0, "OVM will exit when the bound pid exited")
 
 	flag.Parse()
 
