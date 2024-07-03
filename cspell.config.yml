@@ -41,6 +41,7 @@ words:
 
   # pkg/npipe
   - npipe
+  - Npipe
   - sddl
 dictionaries:
   - companies

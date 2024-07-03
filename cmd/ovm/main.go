@@ -99,6 +99,10 @@ func main() {
 		g.Go(r.Run)
 	}
 
+	g.Go(func() error {
+		return util.WaitBindPID(ctx, log, opt.BindPID)
+	})
+
 	wsl.Check(opt, log)
 
 	select {

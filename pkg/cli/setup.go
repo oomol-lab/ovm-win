@@ -30,6 +30,7 @@ type Context struct {
 	CanEnableFeature  bool
 	CanUpdateWSL      bool
 	PodmanPort        int
+	BindPID           int
 }
 
 func Setup() (*Context, error) {
@@ -55,6 +56,7 @@ func (c *Context) basic() error {
 	c.EventSocketPath = `\\.\pipe\` + eventNpipeName
 	c.CanReboot = false
 	c.DistroName = "ovm-" + c.Name
+	c.BindPID = bindPID
 	return nil
 }
 
