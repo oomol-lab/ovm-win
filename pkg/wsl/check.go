@@ -11,9 +11,9 @@ import (
 
 	"github.com/hashicorp/go-version"
 	"github.com/oomol-lab/ovm-win/pkg/channel"
-	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
+	"github.com/oomol-lab/ovm-win/pkg/types"
 	"github.com/oomol-lab/ovm-win/pkg/util"
 )
 
@@ -22,7 +22,8 @@ var (
 	_isFeatureEnabled     bool
 )
 
-func Check(opt *cli.Context, log *logger.Context) {
+func Check(opt *types.PrepareOpt) {
+	log := opt.Logger
 	if isEnabled := isFeatureEnabled(log); !isEnabled {
 		log.Info("WSL2 feature is not enabled")
 		event.NotifySys(event.NeedEnableFeature)

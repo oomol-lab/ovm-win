@@ -9,9 +9,9 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
+	"github.com/oomol-lab/ovm-win/pkg/types"
 	"github.com/oomol-lab/ovm-win/pkg/util"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
 )
@@ -19,7 +19,8 @@ import (
 // Install installs WSL2 feature
 //
 // Enable feature need admin privileges and reboot
-func Install(opt *cli.Context, log *logger.Context) error {
+func Install(opt *types.PrepareOpt) error {
+	log := opt.Logger
 	if !opt.IsElevatedProcess {
 		event.NotifySys(event.EnableFeaturing)
 	}
@@ -40,7 +41,7 @@ func Install(opt *cli.Context, log *logger.Context) error {
 	}
 
 	log.Info("Ready to enable WSL2 feature")
-	if err := doEnableFeature(opt, log); err != nil {
+	if err := doEnableFeature(opt); err != nil {
 		wrapperErr := fmt.Errorf("failed to enable WSL2 feature: %w", err)
 
 		if opt.IsElevatedProcess {
@@ -65,7 +66,8 @@ func Install(opt *cli.Context, log *logger.Context) error {
 	return nil
 }
 
-func doEnableFeature(opt *cli.Context, log *logger.Context) error {
+func doEnableFeature(opt *types.PrepareOpt) error {
+	log := opt.Logger
 	logPath, err := logger.NewOnlyCreate(opt.LogPath, opt.Name+"-dism")
 	if err != nil {
 		return fmt.Errorf("failed to create logger in dism: %w", err)
@@ -86,7 +88,8 @@ func doEnableFeature(opt *cli.Context, log *logger.Context) error {
 }
 
 // Update updates WSL2(include kernel)
-func Update(opt *cli.Context, log *logger.Context) error {
+func Update(opt *types.PrepareOpt) error {
+	log := opt.Logger
 	log.Info("Updating WSL2...")
 
 	event.NotifySys(event.UpdatingWSL)

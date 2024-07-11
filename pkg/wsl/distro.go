@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/podman"
+	"github.com/oomol-lab/ovm-win/pkg/types"
 	"github.com/oomol-lab/ovm-win/pkg/util"
 	"golang.org/x/sync/errgroup"
 )
@@ -152,7 +152,7 @@ func Stop(log *logger.Context, name string) error {
 	return nil
 }
 
-func Launch(ctx context.Context, log *logger.Context, opt *cli.Context) error {
+func Launch(ctx context.Context, log *logger.Context, opt *types.RunOpt) error {
 	event.NotifyApp(event.Starting)
 
 	dataPath := filepath.Join(opt.ImageDir, "data.vhdx")
@@ -162,7 +162,7 @@ func Launch(ctx context.Context, log *logger.Context, opt *cli.Context) error {
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		return launchOVMD(ctx, log, opt)
+		return launchOVMD(ctx, opt)
 	})
 	g.Go(func() error {
 		if err := podman.Ready(ctx, opt.PodmanPort); err != nil {
@@ -176,7 +176,8 @@ func Launch(ctx context.Context, log *logger.Context, opt *cli.Context) error {
 	return g.Wait()
 }
 
-func launchOVMD(ctx context.Context, log *logger.Context, opt *cli.Context) error {
+func launchOVMD(ctx context.Context, opt *types.RunOpt) error {
+	log := opt.Logger
 	vmLog, err := log.NewWithAppendName("vm")
 	if err != nil {
 		return fmt.Errorf("could not create vm logger: %w", err)
@@ -214,13 +215,13 @@ func launchOVMD(ctx context.Context, log *logger.Context, opt *cli.Context) erro
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
-			vmLog.Info(scanner.Text())
+			vmLog.Raw(scanner.Text())
 		}
 	}()
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
-			vmLog.Warn(scanner.Text())
+			vmLog.Raw(scanner.Text())
 		}
 	}()
 
