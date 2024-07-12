@@ -6,120 +6,148 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
-	"github.com/oomol-lab/ovm-win/pkg/channel"
-	"github.com/oomol-lab/ovm-win/pkg/cli"
+	ocli "github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
-	"github.com/oomol-lab/ovm-win/pkg/ipc/restful"
-	"github.com/oomol-lab/ovm-win/pkg/logger"
-	"github.com/oomol-lab/ovm-win/pkg/update"
+	"github.com/oomol-lab/ovm-win/pkg/types"
 	"github.com/oomol-lab/ovm-win/pkg/util"
-	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
-	"github.com/oomol-lab/ovm-win/pkg/wsl"
-	"golang.org/x/sync/errgroup"
+	"github.com/urfave/cli/v3"
 )
 
 var (
-	opt *cli.Context
+	name           string
+	logPath        string
+	imageDir       string
+	rootFSPath     string
+	versions       string
+	eventNpipeName string
+	bindPID        int64
 )
 
-func init() {
-	isElevated, err := sys.IsElevatedProcess()
-	if err != nil {
-		fmt.Println("Failed to check if the current process is an elevated child process", err)
-		util.Exit(1)
-	}
+var (
+	prepareCtx *ocli.PrepareContext
+	runCtx     *ocli.RunContext
+)
 
-	// For debugging purposes, we need to redirect the console of the current process to the parent process before cli.Setup.
-	if isElevated {
-		if err := sys.MoveConsoleToParent(); err != nil {
-			fmt.Println("Failed to move console to parent process", err)
-			util.Exit(1)
-		}
-	}
+func cmd() error {
+	command := &cli.Command{
+		HideHelpCommand: true,
+		Commands: []*cli.Command{
+			{
+				Name:  "prepare",
+				Usage: "Check the System Requirements",
+				Before: func(ctx context.Context, command *cli.Command) error {
+					prepareCtx = ocli.PrepareCmd(&types.PrepareOpt{
+						IsElevatedProcess: false,
+						CanEnableFeature:  false,
+						CanReboot:         false,
+						CanUpdateWSL:      false,
+						BasicOpt: types.BasicOpt{
+							Name:           name,
+							LogPath:        logPath,
+							EventNpipeName: eventNpipeName,
+							BindPID:        int(bindPID),
+						},
+					})
 
-	if ctx, err := cli.Setup(); err != nil {
-		fmt.Println("Failed to setup cli", err)
-		util.Exit(1)
-	} else {
-		opt = ctx
-		opt.IsElevatedProcess = isElevated
+					return prepareCtx.Setup()
+				},
+				Action: func(ctx context.Context, command *cli.Command) (err error) {
+					if err = prepareCtx.Start(); err != nil {
+						event.NotifyError(err)
+					}
+					return
+				},
+			},
+			{
+				Name:  "run",
+				Usage: "Run the Virtual Machine",
+				Before: func(ctx context.Context, command *cli.Command) error {
+					runCtx = ocli.RunCmd(&types.RunOpt{
+						DistroName: name,
+						ImageDir:   imageDir,
+						RootFSPath: rootFSPath,
+						Version:    versions,
+						BasicOpt: types.BasicOpt{
+							Name:           name,
+							LogPath:        logPath,
+							EventNpipeName: eventNpipeName,
+							BindPID:        int(bindPID),
+						},
+					})
+					return runCtx.Setup()
+				},
+				Action: func(ctx context.Context, command *cli.Command) (err error) {
+					if err = runCtx.Start(); err != nil {
+						event.NotifyError(err)
+					}
+					return
+				},
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "image-dir",
+						Usage:       "Store disk images",
+						Required:    true,
+						Destination: &imageDir,
+					},
+					&cli.StringFlag{
+						Name:        "rootfs-path",
+						Usage:       "Path to rootfs image",
+						Required:    true,
+						Destination: &rootFSPath,
+					},
+					&cli.StringFlag{
+						Name:        "versions",
+						Usage:       "Set versions",
+						Required:    true,
+						Destination: &versions,
+					},
+				},
+			},
+		},
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "name",
+				Usage:       "Name of the virtual machine",
+				Required:    true,
+				Persistent:  true,
+				Destination: &name,
+			},
+			&cli.StringFlag{
+				Name:        "log-path",
+				Usage:       "Path to the log file",
+				Required:    true,
+				Persistent:  true,
+				Destination: &logPath,
+			},
+			&cli.StringFlag{
+				Name:        "event-npipe-name",
+				Usage:       "HTTP server established in the named pipe (such as the foo in //./pipe/foo) must implement the GET /notify?event=&message= route",
+				Required:    true,
+				Persistent:  true,
+				Destination: &eventNpipeName,
+			},
+			&cli.IntFlag{
+				Name:        "bind-pid",
+				Usage:       "OVM will exit when the bound pid exited",
+				Value:       0,
+				Required:    false,
+				Destination: &bindPID,
+			},
+		},
 	}
-}
-
-func newLogger() (*logger.Context, error) {
-	if opt.IsElevatedProcess {
-		return logger.NewWithChildProcess(opt.LogPath, opt.Name)
-	}
-	return logger.New(opt.LogPath, opt.Name)
+	return command.Run(context.Background(), os.Args)
 }
 
 func main() {
-	log, err := newLogger()
+	err := cmd()
+	event.NotifyExit()
+
 	if err != nil {
-		fmt.Println("Failed to create logger", err)
+		fmt.Println(err)
 		util.Exit(1)
-	}
-
-	event.Setup(log, opt.EventSocketPath)
-
-	if opt.IsElevatedProcess {
-		_ = wsl.Install(opt, log)
+	} else {
 		util.Exit(0)
 	}
-
-	ctx, cancel := context.WithCancelCause(context.Background())
-	g, ctx := errgroup.WithContext(ctx)
-	defer func() {
-		if err := g.Wait(); err != nil {
-			err = log.Errorf("Main error: %v, cause: %v", err, context.Cause(ctx))
-			event.NotifyError(err)
-			event.NotifyApp(event.Exit)
-			util.Exit(1)
-		} else {
-			log.Info("Done")
-			event.NotifyApp(event.Exit)
-			util.Exit(0)
-		}
-	}()
-
-	if !sys.SupportWSL2(log) {
-		event.NotifySys(event.SystemNotSupport)
-		cancel(fmt.Errorf("WSL2 is not supported on this system, need Windows 10 version 19043 or higher"))
-		return
-	}
-
-	if !opt.IsElevatedProcess {
-		r, err := restful.Setup(ctx, opt, log)
-		if err != nil {
-			cancel(fmt.Errorf("failed to setup RESTful server: %w", err))
-			return
-		}
-
-		g.Go(r.Run)
-	}
-
-	g.Go(func() error {
-		return util.WaitBindPID(ctx, log, opt.BindPID)
-	})
-
-	wsl.Check(opt, log)
-
-	select {
-	case <-channel.ReceiveWSLEnvReady():
-		log.Info("WSL environment is ready")
-	case <-ctx.Done():
-		return
-	}
-
-	if err := update.New(opt).CheckAndReplace(log); err != nil {
-		cancel(log.Errorf("Failed to update: %v", err))
-		return
-	}
-
-	g.Go(func() error {
-		return wsl.Launch(ctx, log, opt)
-	})
-
-	return
 }

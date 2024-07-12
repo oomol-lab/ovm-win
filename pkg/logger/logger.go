@@ -161,11 +161,24 @@ func (c *Context) NewWithAppendName(name string) (*Context, error) {
 
 func (c *Context) base(t, message string) {
 	d := time.Now().Format("2006-01-02 15:04:05.000")
-	if c.isChild {
-		_, _ = c.write([]byte(fmt.Sprintf("%s [CHILD] [%s]: %s\n", d, t, message)))
-	} else {
-		_, _ = c.write([]byte(fmt.Sprintf("%s [%s]: %s\n", d, t, message)))
+	tag := ""
+	if t != "" {
+		tag = fmt.Sprintf("[%s]: ", t)
 	}
+
+	if c.isChild {
+		_, _ = c.write([]byte(fmt.Sprintf("%s [CHILD] %s%s\n", d, tag, message)))
+	} else {
+		_, _ = c.write([]byte(fmt.Sprintf("%s %s%s\n", d, tag, message)))
+	}
+}
+
+func (c *Context) Raw(message string) {
+	c.base("", message)
+}
+
+func (c *Context) Rawf(format string, args ...any) {
+	c.Raw(fmt.Sprintf(format, args...))
 }
 
 func (c *Context) Info(message string) {

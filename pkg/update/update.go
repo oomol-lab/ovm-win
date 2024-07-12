@@ -11,33 +11,27 @@ import (
 	"slices"
 
 	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
-	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/util"
 
-	"github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/types"
 )
 
-type Updater interface {
-	CheckAndReplace(log *logger.Context) error
-}
-
-type context struct {
-	types.Version
-
-	opt      *cli.Context
+type Context struct {
 	jsonPath string
+
+	types.Version
+	types.RunOpt
 }
 
-func New(opt *cli.Context) (updater Updater) {
-	return &context{
-		Version:  opt.Version,
-		opt:      opt,
+func New(opt *types.RunOpt, version types.Version) *Context {
+	return &Context{
 		jsonPath: filepath.Join(opt.ImageDir, "versions.json"),
+		Version:  types.Version{},
+		RunOpt:   *opt,
 	}
 }
 
-func (c *context) save() error {
+func (c *Context) save() error {
 	data, err := json.Marshal(c)
 	if err != nil {
 		return fmt.Errorf("failed to marshal versions: %w", err)
@@ -50,8 +44,9 @@ func (c *context) save() error {
 	return nil
 }
 
-func (c *context) needUpdate(log *logger.Context) (result []types.VersionKey) {
-	jsonVersion := &context{}
+func (c *Context) needUpdate() (result []types.VersionKey) {
+	log := c.Logger
+	jsonVersion := &Context{}
 	data, err := os.ReadFile(c.jsonPath)
 	if err != nil {
 		log.Warnf("failed to read versions.json file: %v", err)
@@ -64,7 +59,7 @@ func (c *context) needUpdate(log *logger.Context) (result []types.VersionKey) {
 		return []types.VersionKey{types.VersionRootFS, types.VersionData}
 	}
 
-	rootfsPath := filepath.Join(c.opt.ImageDir, "ext4.vhdx")
+	rootfsPath := filepath.Join(c.ImageDir, "ext4.vhdx")
 	if jsonVersion.RootFS != c.RootFS || util.Exists(rootfsPath) != nil {
 		if jsonVersion.RootFS != c.RootFS {
 			log.Infof("need update rootfs, because version changed: %s -> %s", jsonVersion.RootFS, c.RootFS)
@@ -75,7 +70,7 @@ func (c *context) needUpdate(log *logger.Context) (result []types.VersionKey) {
 		result = append(result, types.VersionRootFS)
 	}
 
-	dataPath := filepath.Join(c.opt.ImageDir, "data.vhdx")
+	dataPath := filepath.Join(c.ImageDir, "data.vhdx")
 	if jsonVersion.Data != c.Data || util.Exists(dataPath) != nil {
 		if jsonVersion.Data != c.Data {
 			log.Infof("need update data, because version changed: %s -> %s", jsonVersion.Data, c.Data)
@@ -88,30 +83,31 @@ func (c *context) needUpdate(log *logger.Context) (result []types.VersionKey) {
 	return
 }
 
-func (c *context) CheckAndReplace(log *logger.Context) error {
-	list := c.needUpdate(log)
+func (c *Context) CheckAndReplace() error {
+	log := c.Logger
+	list := c.needUpdate()
 	if len(list) == 0 {
 		log.Info("no need to update versions")
 		return nil
 	}
 
 	if slices.Contains(list, types.VersionData) {
-		event.NotifyApp(event.UpdatingData)
-		if err := updateData(c.opt, log); err != nil {
-			event.NotifyApp(event.UpdateDataFailed)
+		event.NotifyRun(event.UpdatingData)
+		if err := c.updateData(); err != nil {
+			event.NotifyRun(event.UpdateDataFailed)
 			return fmt.Errorf("failed to update data: %w", err)
 		}
-		event.NotifyApp(event.UpdateDataSuccess)
+		event.NotifyRun(event.UpdateDataSuccess)
 		log.Info("update data success")
 	}
 
 	if slices.Contains(list, types.VersionRootFS) {
-		event.NotifyApp(event.UpdatingRootFS)
-		if err := updateRootfs(c.opt, log); err != nil {
-			event.NotifyApp(event.UpdateRootFSFailed)
+		event.NotifyRun(event.UpdatingRootFS)
+		if err := c.updateRootfs(); err != nil {
+			event.NotifyRun(event.UpdateRootFSFailed)
 			return fmt.Errorf("failed to update rootfs: %w", err)
 		}
-		event.NotifyApp(event.UpdateRootFSSuccess)
+		event.NotifyRun(event.UpdateRootFSSuccess)
 		log.Info("update rootfs success")
 	}
 
