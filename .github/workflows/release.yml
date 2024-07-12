@@ -46,10 +46,6 @@ jobs:
           signtool.exe sign /sha1 ${{ secrets.SM_CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 ./out/ovm-amd64.exe
           signtool.exe verify /v /pa ./out/ovm-amd64.exe
 
-      - name: sha256sum
-        working-directory: out
-        run: shasum -a 256 * > ./SHA256SUM.txt
-
       - name: Release
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
         with:
