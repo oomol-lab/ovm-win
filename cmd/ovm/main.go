@@ -47,6 +47,7 @@ func cmd() error {
 							Name:           name,
 							LogPath:        logPath,
 							EventNpipeName: eventNpipeName,
+							BindPID:        int(bindPID),
 						},
 					})
 
@@ -65,11 +66,11 @@ func cmd() error {
 						ImageDir:   imageDir,
 						RootFSPath: rootFSPath,
 						Version:    versions,
-						BindPID:    int(bindPID),
 						BasicOpt: types.BasicOpt{
 							Name:           name,
 							LogPath:        logPath,
 							EventNpipeName: eventNpipeName,
+							BindPID:        int(bindPID),
 						},
 					})
 					return runCtx.Setup()
@@ -96,13 +97,6 @@ func cmd() error {
 						Required:    true,
 						Destination: &versions,
 					},
-					&cli.IntFlag{
-						Name:        "bind-pid",
-						Usage:       "OVM will exit when the bound pid exited",
-						Value:       0,
-						Required:    false,
-						Destination: &bindPID,
-					},
 				},
 			},
 		},
@@ -127,6 +121,13 @@ func cmd() error {
 				Required:    true,
 				Persistent:  true,
 				Destination: &eventNpipeName,
+			},
+			&cli.IntFlag{
+				Name:        "bind-pid",
+				Usage:       "OVM will exit when the bound pid exited",
+				Value:       0,
+				Required:    false,
+				Destination: &bindPID,
 			},
 		},
 	}

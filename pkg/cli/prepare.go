@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/oomol-lab/ovm-win/pkg/channel"
@@ -14,6 +15,7 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/util"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
 	"github.com/oomol-lab/ovm-win/pkg/wsl"
+	"golang.org/x/sync/errgroup"
 )
 
 type PrepareContext struct {
@@ -62,26 +64,30 @@ func (c *PrepareContext) Start() error {
 		return fmt.Errorf("WSL2 is not supported on this system, need Windows 10 version 19043 or higher")
 	}
 
-	serverDoneCh := make(chan error)
-	{
-		r, err := restful.SetupPrepare(&c.PrepareOpt)
-		if err != nil {
-			return fmt.Errorf("failed to setup RESTful server: %w", err)
-		}
-
-		go func() {
-			serverDoneCh <- r.Run()
-		}()
-		defer func() {
-			_ = r.Close()
-		}()
+	r, err := restful.SetupPrepare(&c.PrepareOpt)
+	if err != nil {
+		return fmt.Errorf("failed to setup RESTful server: %w", err)
 	}
+
+	g, ctx := errgroup.WithContext(context.Background())
+
+	g.Go(func() error {
+		context.AfterFunc(ctx, func() {
+			_ = r.Close()
+		})
+
+		return r.Run()
+	})
+
+	g.Go(func() error {
+		return util.WaitBindPID(ctx, c.Logger, c.BindPID)
+	})
 
 	wsl.Check(&c.PrepareOpt)
 
 	select {
-	case err := <-serverDoneCh:
-		return fmt.Errorf("failed to run RESTful server: %w", err)
+	case <-ctx.Done():
+		return fmt.Errorf("app unexpectedly exit, because the context is done, ctx err: %v", context.Cause(ctx))
 	case <-channel.ReceiveWSLEnvReady():
 		return nil
 	}

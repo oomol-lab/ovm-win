@@ -10,6 +10,7 @@ type BasicOpt struct {
 	LogPath         string
 	EventNpipeName  string
 	RestfulEndpoint string
+	BindPID         int
 	Logger          *logger.Context
 }
 
@@ -27,7 +28,6 @@ type RunOpt struct {
 	ImageDir       string
 	RootFSPath     string
 	Version        string
-	BindPID        int
 	PodmanPort     int
 	StoppedWithAPI bool
 
