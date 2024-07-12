@@ -153,7 +153,7 @@ func Stop(log *logger.Context, name string) error {
 }
 
 func Launch(ctx context.Context, log *logger.Context, opt *types.RunOpt) error {
-	event.NotifyApp(event.Starting)
+	event.NotifyRun(event.Starting)
 
 	dataPath := filepath.Join(opt.ImageDir, "data.vhdx")
 	if err := MountVHDX(log, dataPath); err != nil {
@@ -169,7 +169,7 @@ func Launch(ctx context.Context, log *logger.Context, opt *types.RunOpt) error {
 			return fmt.Errorf("podman is not ready: %w", err)
 		}
 
-		event.NotifyApp(event.Ready)
+		event.NotifyRun(event.Ready)
 		return nil
 	})
 

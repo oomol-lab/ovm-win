@@ -22,21 +22,21 @@ import (
 func Install(opt *types.PrepareOpt) error {
 	log := opt.Logger
 	if !opt.IsElevatedProcess {
-		event.NotifySys(event.EnableFeaturing)
+		event.NotifyPrepare(event.EnableFeaturing)
 	}
 
 	if !sys.IsAdmin() {
 		log.Info("Current process is not running with admin privileges, will open a new process with admin privileges")
 		if err := sys.RunAsAdminWait(); err != nil {
-			event.NotifySys(event.EnableFeatureFailed)
+			event.NotifyPrepare(event.EnableFeatureFailed)
 			return fmt.Errorf("failed to run as admin: %w", err)
 		}
 
 		log.Info("Admin process already successfully executed and exited")
 		opt.CanEnableFeature = false
 		opt.CanReboot = true
-		event.NotifySys(event.EnableFeatureSuccess)
-		event.NotifySys(event.NeedReboot)
+		event.NotifyPrepare(event.EnableFeatureSuccess)
+		event.NotifyPrepare(event.NeedReboot)
 		return nil
 	}
 
@@ -49,7 +49,7 @@ func Install(opt *types.PrepareOpt) error {
 			util.Exit(1)
 		}
 
-		event.NotifySys(event.EnableFeatureFailed)
+		event.NotifyPrepare(event.EnableFeatureFailed)
 		return wrapperErr
 	}
 
@@ -61,8 +61,8 @@ func Install(opt *types.PrepareOpt) error {
 
 	opt.CanEnableFeature = false
 	opt.CanReboot = true
-	event.NotifySys(event.EnableFeatureSuccess)
-	event.NotifySys(event.NeedReboot)
+	event.NotifyPrepare(event.EnableFeatureSuccess)
+	event.NotifyPrepare(event.NeedReboot)
 	return nil
 }
 
@@ -92,7 +92,7 @@ func Update(opt *types.PrepareOpt) error {
 	log := opt.Logger
 	log.Info("Updating WSL2...")
 
-	event.NotifySys(event.UpdatingWSL)
+	event.NotifyPrepare(event.UpdatingWSL)
 
 	backoff := 500 * time.Millisecond
 	tryCount := 3
@@ -101,7 +101,7 @@ func Update(opt *types.PrepareOpt) error {
 		if err == nil {
 			opt.CanUpdateWSL = false
 			log.Info("WSL2 has been updated")
-			event.NotifySys(event.UpdateWSLSuccess)
+			event.NotifyPrepare(event.UpdateWSLSuccess)
 			return nil
 		}
 
@@ -116,7 +116,7 @@ func Update(opt *types.PrepareOpt) error {
 		backoff *= 2
 	}
 
-	event.NotifySys(event.UpdateWSLFailed)
+	event.NotifyPrepare(event.UpdateWSLFailed)
 	return fmt.Errorf("failed to update WSL2")
 }
 

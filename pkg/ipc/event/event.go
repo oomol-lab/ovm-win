@@ -19,42 +19,42 @@ import (
 type key string
 
 const (
-	kSys   key = "sys"
-	kApp   key = "app"
-	kError key = "error"
+	kPrepare key = "prepare"
+	kRun     key = "run"
+	kError   key = "error"
+	kExit    key = "exit"
 )
 
-type sys string
+type prepare string
 
 const (
-	SystemNotSupport sys = "SystemNotSupport"
+	SystemNotSupport prepare = "SystemNotSupport"
 
-	NeedEnableFeature    sys = "NeedEnableFeature"
-	EnableFeaturing      sys = "EnableFeaturing"
-	EnableFeatureFailed  sys = "EnableFeatureFailed"
-	EnableFeatureSuccess sys = "EnableFeatureSuccess"
-	NeedReboot           sys = "NeedReboot"
+	NeedEnableFeature    prepare = "NeedEnableFeature"
+	EnableFeaturing      prepare = "EnableFeaturing"
+	EnableFeatureFailed  prepare = "EnableFeatureFailed"
+	EnableFeatureSuccess prepare = "EnableFeatureSuccess"
+	NeedReboot           prepare = "NeedReboot"
 
-	NeedUpdateWSL    sys = "NeedUpdateWSL"
-	UpdatingWSL      sys = "UpdatingWSL"
-	UpdateWSLFailed  sys = "UpdateWSLFailed"
-	UpdateWSLSuccess sys = "UpdateWSLSuccess"
+	NeedUpdateWSL    prepare = "NeedUpdateWSL"
+	UpdatingWSL      prepare = "UpdatingWSL"
+	UpdateWSLFailed  prepare = "UpdateWSLFailed"
+	UpdateWSLSuccess prepare = "UpdateWSLSuccess"
 )
 
-type app string
+type run string
 
 const (
-	UpdatingRootFS      app = "UpdatingRootFS"
-	UpdateRootFSFailed  app = "UpdateRootFSFailed"
-	UpdateRootFSSuccess app = "UpdateRootFSSuccess"
+	UpdatingRootFS      run = "UpdatingRootFS"
+	UpdateRootFSFailed  run = "UpdateRootFSFailed"
+	UpdateRootFSSuccess run = "UpdateRootFSSuccess"
 
-	UpdatingData      app = "UpdatingData"
-	UpdateDataFailed  app = "UpdateDataFailed"
-	UpdateDataSuccess app = "UpdateDataSuccess"
+	UpdatingData      run = "UpdatingData"
+	UpdateDataFailed  run = "UpdateDataFailed"
+	UpdateDataSuccess run = "UpdateDataSuccess"
 
-	Starting app = "Starting"
-	Ready    app = "Ready"
-	Exit     app = "Exit"
+	Starting run = "Starting"
+	Ready    run = "Ready"
 )
 
 type datum struct {
@@ -103,7 +103,7 @@ func Setup(log *logger.Context, socketPath string) {
 				}
 			}
 
-			if datum.message == string(Exit) || datum.message == string(NeedReboot) {
+			if datum.name == kExit || datum.message == string(NeedReboot) {
 				waitDone <- struct{}{}
 				return
 			}
@@ -124,21 +124,25 @@ func notify(k key, v string) {
 	// wait for the event to be processed
 	// Exit event indicates the main process exit
 	// NeedReboot event indicates the child process exit
-	if v == string(Exit) || v == string(NeedReboot) {
+	if k == kExit || v == string(NeedReboot) {
 		<-waitDone
 		close(waitDone)
 		e.channel.Close()
 	}
 }
 
-func NotifySys(v sys) {
-	notify(kSys, string(v))
+func NotifyPrepare(v prepare) {
+	notify(kPrepare, string(v))
 }
 
-func NotifyApp(v app) {
-	notify(kApp, string(v))
+func NotifyRun(v run) {
+	notify(kRun, string(v))
 }
 
 func NotifyError(err error) {
 	notify(kError, err.Error())
+}
+
+func NotifyExit() {
+	notify(kExit, "")
 }

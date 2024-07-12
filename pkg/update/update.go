@@ -92,22 +92,22 @@ func (c *Context) CheckAndReplace() error {
 	}
 
 	if slices.Contains(list, types.VersionData) {
-		event.NotifyApp(event.UpdatingData)
+		event.NotifyRun(event.UpdatingData)
 		if err := c.updateData(); err != nil {
-			event.NotifyApp(event.UpdateDataFailed)
+			event.NotifyRun(event.UpdateDataFailed)
 			return fmt.Errorf("failed to update data: %w", err)
 		}
-		event.NotifyApp(event.UpdateDataSuccess)
+		event.NotifyRun(event.UpdateDataSuccess)
 		log.Info("update data success")
 	}
 
 	if slices.Contains(list, types.VersionRootFS) {
-		event.NotifyApp(event.UpdatingRootFS)
+		event.NotifyRun(event.UpdatingRootFS)
 		if err := c.updateRootfs(); err != nil {
-			event.NotifyApp(event.UpdateRootFSFailed)
+			event.NotifyRun(event.UpdateRootFSFailed)
 			return fmt.Errorf("failed to update rootfs: %w", err)
 		}
-		event.NotifyApp(event.UpdateRootFSSuccess)
+		event.NotifyRun(event.UpdateRootFSSuccess)
 		log.Info("update rootfs success")
 	}
 

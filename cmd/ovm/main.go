@@ -53,8 +53,11 @@ func cmd() error {
 
 					return prepareCtx.Setup()
 				},
-				Action: func(ctx context.Context, command *cli.Command) error {
-					return prepareCtx.Start()
+				Action: func(ctx context.Context, command *cli.Command) (err error) {
+					if err = prepareCtx.Start(); err != nil {
+						event.NotifyError(err)
+					}
+					return
 				},
 			},
 			{
@@ -75,8 +78,11 @@ func cmd() error {
 					})
 					return runCtx.Setup()
 				},
-				Action: func(ctx context.Context, command *cli.Command) error {
-					return runCtx.Start()
+				Action: func(ctx context.Context, command *cli.Command) (err error) {
+					if err = runCtx.Start(); err != nil {
+						event.NotifyError(err)
+					}
+					return
 				},
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -136,13 +142,10 @@ func cmd() error {
 
 func main() {
 	err := cmd()
-	if err != nil {
-		event.NotifyError(err)
-		fmt.Println(err)
-	}
-	event.NotifyApp(event.Exit)
+	event.NotifyExit()
 
 	if err != nil {
+		fmt.Println(err)
 		util.Exit(1)
 	} else {
 		util.Exit(0)

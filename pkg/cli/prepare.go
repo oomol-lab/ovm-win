@@ -60,7 +60,7 @@ func (c *PrepareContext) Start() error {
 	}
 
 	if !sys.SupportWSL2(c.Logger) {
-		event.NotifySys(event.SystemNotSupport)
+		event.NotifyPrepare(event.SystemNotSupport)
 		return fmt.Errorf("WSL2 is not supported on this system, need Windows 10 version 19043 or higher")
 	}
 

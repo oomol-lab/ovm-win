@@ -26,7 +26,7 @@ func Check(opt *types.PrepareOpt) {
 	log := opt.Logger
 	if isEnabled := isFeatureEnabled(log); !isEnabled {
 		log.Info("WSL2 feature is not enabled")
-		event.NotifySys(event.NeedEnableFeature)
+		event.NotifyPrepare(event.NeedEnableFeature)
 		opt.CanEnableFeature = true
 		return
 	}
@@ -46,7 +46,7 @@ func Check(opt *types.PrepareOpt) {
 		log.Info("WSL2 needs to be updated")
 	}
 
-	event.NotifySys(event.NeedUpdateWSL)
+	event.NotifyPrepare(event.NeedUpdateWSL)
 	opt.CanUpdateWSL = true
 	return
 }
