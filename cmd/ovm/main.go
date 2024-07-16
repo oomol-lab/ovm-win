@@ -133,6 +133,7 @@ func cmd() error {
 				Usage:       "OVM will exit when the bound pid exited",
 				Value:       0,
 				Required:    false,
+				Persistent:  true,
 				Destination: &bindPID,
 			},
 		},
