@@ -1,8 +1,8 @@
-name: Release
+name: test-sign
 on:
   push:
-    tags:
-      - "v*.*.*"
+    branches:
+      - test-sign
 
 jobs:
   release:
@@ -38,22 +38,14 @@ jobs:
           smksp_cert_sync.exe
         shell: cmd
 
-      - name: Build
-        run: make build
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
 
-      - name: Sign
-        run: |
-          signtool.exe sign /sha1 ${{ secrets.SM_CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 ./out/ovm-amd64.exe
-          signtool.exe verify /v /pa ./out/ovm-amd64.exe
-
-      - name: Release
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
-        with:
-          files: |
-            out/*
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-          fail_on_unmatched_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Upload
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: ovm-amd64
+      #     path: out/
+      #     if-no-files-found: error
+      #     overwrite: true
+      #     retention-days: 2
