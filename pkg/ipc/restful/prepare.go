@@ -55,6 +55,8 @@ func (r *routerPrepare) mux() http.Handler {
 type rebootBody struct {
 	// RunOnce is the command to run after the next system startup
 	RunOnce string `json:"runOnce"`
+	// Later is whether to reboot later
+	Later bool `json:"later"`
 }
 
 func (r *routerPrepare) reboot(w http.ResponseWriter, req *http.Request) {
@@ -76,15 +78,17 @@ func (r *routerPrepare) reboot(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := sys.RunOnce(body.RunOnce); err != nil {
+	if err := sys.RunOnce(r.opt.Name, body.RunOnce); err != nil {
 		r.log.Warnf("Failed to set %s to runOnce: %v", body.RunOnce, err)
 		http.Error(w, "failed to set runOnce", http.StatusInternalServerError)
 		return
 	}
 
-	if err := sys.Reboot(); err != nil {
-		r.log.Warnf("Failed to reboot system: %v", err)
-		http.Error(w, "failed to reboot system", http.StatusInternalServerError)
+	if !body.Later {
+		if err := sys.Reboot(); err != nil {
+			r.log.Warnf("Failed to reboot system: %v", err)
+			http.Error(w, "failed to reboot system", http.StatusInternalServerError)
+		}
 	}
 }
 

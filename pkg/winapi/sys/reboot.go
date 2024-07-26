@@ -42,7 +42,7 @@ func Reboot() error {
 const registryRunOncePath = `Software\Microsoft\Windows\CurrentVersion\RunOnce`
 
 // RunOnce commands to run after the next system startup
-func RunOnce(launchPath string) error {
+func RunOnce(name, launchPath string) error {
 	// no administrator privileges required to modify HKCU
 	key, _, err := registry.CreateKey(registry.CURRENT_USER, registryRunOncePath, registry.SET_VALUE)
 	if err != nil {
@@ -53,7 +53,7 @@ func RunOnce(launchPath string) error {
 		_ = key.Close()
 	}()
 
-	if err := key.SetExpandStringValue("ovm", launchPath); err != nil {
+	if err := key.SetExpandStringValue(name, launchPath); err != nil {
 		return fmt.Errorf("failed to set registry value: %w", err)
 	}
 
