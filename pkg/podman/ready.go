@@ -23,7 +23,7 @@ func Ready(ctx context.Context, podmanPort int) error {
 	// See: https://docs.podman.io/en/latest/_static/api.html?version=v4.0#tag/system/operation/SystemPing
 	url := fmt.Sprintf("http://127.0.0.1:%d/_ping", podmanPort)
 	for {
-		if err := request.Get(ctx, url); err != nil {
+		if _, err := request.Get(ctx, url); err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}

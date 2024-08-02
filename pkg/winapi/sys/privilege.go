@@ -19,19 +19,16 @@ func IsAdmin() bool {
 	return windows.GetCurrentProcessToken().IsElevated()
 }
 
-// RunAsAdminWait restarts the current process with admin privileges
-func RunAsAdminWait() error {
-	exe, cwd, err := currentEXEAndCWD()
-	if err != nil {
-		return fmt.Errorf("could not get current process executable and cwd: %w", err)
-	}
+func RunAsAdminWait(cmd []string, cwd string) error {
+	exe := cmd[0]
+	args := cmd[1:]
 
 	sei := &winapi.SHELLEXECUTEINFO{
 		FMask:       winapi.SEE_MASK_NOCLOSEPROCESS,
 		Hwnd:        0,
 		LpVerb:      winapi.CStr("runas"),
 		LpFile:      winapi.CStr(exe),
-		LpParams:    winapi.CStr(util.EscapeArg(os.Args[1:])),
+		LpParams:    winapi.CStr(util.EscapeArg(args)),
 		LpDirectory: winapi.CStr(cwd),
 		NShow:       syscall.SW_HIDE,
 	}
@@ -55,6 +52,18 @@ func RunAsAdminWait() error {
 	}
 
 	return nil
+}
+
+// ReRunAsAdminWait restarts the current process with admin privileges
+func ReRunAsAdminWait() error {
+	exe, cwd, err := currentEXEAndCWD()
+	if err != nil {
+		return fmt.Errorf("could not get current process executable and cwd: %w", err)
+	}
+
+	cmd := []string{exe}
+	cmd = append(cmd, os.Args[1:]...)
+	return RunAsAdminWait(cmd, cwd)
 }
 
 // IsElevatedProcess checks if the current process is an elevated child process created through [RunAsAdmin]
@@ -90,7 +99,7 @@ func waitProcessExit(handle windows.Handle) error {
 
 	var code uint32
 	if err := windows.GetExitCodeProcess(handle, &code); err != nil {
-		return fmt.Errorf("could not get process exit code: %v", err)
+		return fmt.Errorf("could not get process exit code: %w", err)
 	}
 	if code != 0 {
 		return fmt.Errorf("process exited with code %d", code)
