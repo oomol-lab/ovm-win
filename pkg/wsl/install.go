@@ -4,15 +4,20 @@
 package wsl
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/types"
 	"github.com/oomol-lab/ovm-win/pkg/util"
+	"github.com/oomol-lab/ovm-win/pkg/util/request"
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
 )
 
@@ -27,7 +32,7 @@ func Install(opt *types.PrepareOpt) error {
 
 	if !sys.IsAdmin() {
 		log.Info("Current process is not running with admin privileges, will open a new process with admin privileges")
-		if err := sys.RunAsAdminWait(); err != nil {
+		if err := sys.ReRunAsAdminWait(); err != nil {
 			event.NotifyPrepare(event.EnableFeatureFailed)
 			return fmt.Errorf("failed to run as admin: %w", err)
 		}
@@ -87,37 +92,79 @@ func doEnableFeature(opt *types.PrepareOpt) error {
 	return nil
 }
 
+type item struct {
+	URL    string `json:"url"`
+	Sha256 string `json:"sha256"`
+	Size   int64  `json:"size"`
+}
+
+// See: https://github.com/oomol/wsl-msi-s3-sync
+type latest struct {
+	Version string `json:"version"`
+	X64     item   `json:"x64"`
+	Arm64   item   `json:"arm64"`
+	Date    string `json:"date"`
+}
+
+const latestURL = "https://static.oomol.com/wsl-msi/latest.json"
+
 // Update updates WSL2(include kernel)
 func Update(opt *types.PrepareOpt) error {
 	log := opt.Logger
-	log.Info("Updating WSL2...")
 
 	event.NotifyPrepare(event.UpdatingWSL)
 
-	backoff := 500 * time.Millisecond
-	tryCount := 3
-	for i := 1; i <= tryCount; i++ {
-		err := util.Silent(log, Find(), "--update")
-		if err == nil {
-			opt.CanUpdateWSL = false
-			log.Info("WSL2 has been updated")
-			event.NotifyPrepare(event.UpdateWSLSuccess)
-			return nil
-		}
+	log.Info("Downloading the latest version of WSL2...")
 
-		var eerr *exec.ExitError
-		if errors.As(err, &eerr) {
-			log.Warnf("Failed to update WSL2: %v, exit code: %d, retry %d/%d", err, eerr.ExitCode(), i, tryCount)
-		} else {
-			log.Warnf("Failed to update WSL2: %v, retry %d/%d", err, i, tryCount)
-		}
+	ctx := context.WithValue(context.Background(), request.NoCache, true)
+	ctx = context.WithValue(ctx, request.TimeOut, 6*time.Second)
 
-		time.Sleep(backoff)
-		backoff *= 2
+	log.Info("Checking the latest version of WSL2...")
+
+	body, err := request.Get(ctx, latestURL)
+	if err != nil {
+		event.NotifyPrepare(event.UpdateWSLFailed)
+		return fmt.Errorf("failed to get latest version: %w", err)
 	}
 
-	event.NotifyPrepare(event.UpdateWSLFailed)
-	return fmt.Errorf("failed to update WSL2")
+	var l latest
+	if err := json.Unmarshal(body, &l); err != nil {
+		event.NotifyPrepare(event.UpdateWSLFailed)
+		return fmt.Errorf("failed to unmarshal latest version: %w", err)
+	}
+
+	log.Infof("Latest version: %s", l.Version)
+
+	cachePath, ok := util.CachePath()
+	if !ok {
+		event.NotifyPrepare(event.UpdateWSLFailed)
+		return fmt.Errorf("failed to get cache path")
+	}
+	if err := os.MkdirAll(cachePath, 0755); err != nil {
+		event.NotifyPrepare(event.UpdateWSLFailed)
+		return fmt.Errorf("failed to create cache path: %w", err)
+	}
+
+	msi := filepath.Join(cachePath, "wsl2.msi")
+
+	if err := request.Download(context.Background(), log, l.X64.URL, msi, l.X64.Sha256); err != nil {
+		event.NotifyPrepare(event.UpdateWSLFailed)
+		return fmt.Errorf("failed to download WSL2: %w", err)
+	}
+
+	logPath, err := logger.NewOnlyCreate(opt.LogPath, opt.Name+"-update-wsl")
+	if err != nil {
+		return fmt.Errorf("failed to create logger in update wsl: %w", err)
+	}
+
+	if err := sys.RunAsAdminWait([]string{"msiexec", "/a", msi, "/passive", "/norestart", "/L*V", logPath}, opt.LogPath); err != nil {
+		event.NotifyPrepare(event.UpdateWSLFailed)
+		return fmt.Errorf("failed to update WSL2: %w", err)
+	}
+
+	opt.CanUpdateWSL = false
+	event.NotifyPrepare(event.UpdateWSLSuccess)
+	return nil
 }
 
 const (

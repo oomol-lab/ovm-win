@@ -41,3 +41,15 @@ func ProgramFiles() (string, bool) {
 
 	return `C:\Program Files`, false
 }
+
+func CachePath() (string, bool) {
+	if p := os.Getenv("LOCALAPPDATA"); p != "" {
+		return filepath.Join(p, "ovm", "Cache"), true
+	}
+
+	if p, err := windows.KnownFolderPath(windows.FOLDERID_LocalAppData, windows.KF_FLAG_DEFAULT); err == nil {
+		return filepath.Join(p, "ovm", "Cache"), true
+	}
+
+	return "", false
+}
