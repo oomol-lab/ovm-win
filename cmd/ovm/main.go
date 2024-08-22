@@ -130,8 +130,9 @@ func cmd() error {
 			},
 			&cli.IntFlag{
 				Name:        "bind-pid",
-				Usage:       "OVM will exit when the bound pid exited (If pid is 0, OVM will not exit)",
-				Required:    true,
+				Usage:       "OVM will exit when the bound pid exited",
+				Value:       0,
+				Required:    false,
 				Persistent:  true,
 				Destination: &bindPID,
 			},
