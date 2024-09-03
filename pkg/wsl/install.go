@@ -157,7 +157,7 @@ func Update(opt *types.PrepareOpt) error {
 		return fmt.Errorf("failed to create logger in update wsl: %w", err)
 	}
 
-	if err := sys.RunAsAdminWait([]string{"msiexec", "/a", msi, "/passive", "/norestart", "/L*V", logPath}, opt.LogPath); err != nil {
+	if err := sys.RunAsAdminWait([]string{"msiexec", "/i", msi, "/passive", "/norestart", "/L*V", logPath}, opt.LogPath); err != nil {
 		event.NotifyPrepare(event.UpdateWSLFailed)
 		return fmt.Errorf("failed to update WSL2: %w", err)
 	}
