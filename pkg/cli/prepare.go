@@ -5,6 +5,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/oomol-lab/ovm-win/pkg/channel"
@@ -16,6 +17,7 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
 	"github.com/oomol-lab/ovm-win/pkg/wsl"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sys/windows"
 )
 
 type PrepareContext struct {
@@ -31,9 +33,11 @@ func PrepareCmd(p *types.PrepareOpt) *PrepareContext {
 }
 
 func (c *PrepareContext) Setup() error {
-	if err := c.setElevate(); err != nil {
-		return err
+	isElevated, err := sys.IsElevatedProcess()
+	if err != nil {
+		return fmt.Errorf("failed to check if the current process is an elevated child process: %w", err)
 	}
+	c.IsElevatedProcess = isElevated
 
 	// logger
 	{
@@ -47,6 +51,8 @@ func (c *PrepareContext) Setup() error {
 			c.Logger = log
 		}
 	}
+
+	c.moveConsoleToParent()
 
 	event.Setup(c.Logger, `\\.\pipe\`+c.EventNpipeName)
 
@@ -93,28 +99,22 @@ func (c *PrepareContext) Start() error {
 	}
 }
 
-func (c *PrepareContext) setElevate() error {
-	isElevated, err := sys.IsElevatedProcess()
-	if err != nil {
-		return fmt.Errorf("failed to check if the current process is an elevated child process: %w", err)
-	}
-
-	c.IsElevatedProcess = isElevated
-
+func (c *PrepareContext) moveConsoleToParent() {
 	// For debugging purposes, we need to redirect the console of the current process to the parent process
-	if isElevated {
+	if c.IsElevatedProcess {
 		if err := sys.MoveConsoleToParent(); err != nil {
-			return fmt.Errorf("failed to move console to parent process: %w", err)
+			if errors.Is(err, windows.ERROR_INVALID_HANDLE) {
+				c.Logger.Info("Cannot move console to parent process, because the parent process not have a console")
+			} else {
+				c.Logger.Warnf("Failed to move console to parent process: %v", err)
+			}
 		}
 	}
-
-	return nil
 }
 
 func (c *PrepareContext) loggerInstance() (*logger.Context, error) {
 	if c.IsElevatedProcess {
 		return logger.NewWithChildProcess(c.LogPath, "prepare-"+c.Name)
 	}
-
 	return logger.New(c.LogPath, "prepare-"+c.Name)
 }
