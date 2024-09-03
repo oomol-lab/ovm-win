@@ -16,11 +16,11 @@ const ATTACH_PARENT_PROCESS = ^uintptr(0)
 // MoveConsoleToParent moves the console(stdout / stderr / stdin) to the parent process
 func MoveConsoleToParent() error {
 	if err := winapi.FreeConsole(); err != nil {
-		return fmt.Errorf("failed to free console: %v", err)
+		return fmt.Errorf("failed to free console: %w", err)
 	}
 
 	if err := winapi.AttachConsole(ATTACH_PARENT_PROCESS); err != nil {
-		return fmt.Errorf("failed to attach console: %v", err)
+		return fmt.Errorf("failed to attach console: %w", err)
 	}
 
 	//  Update the standard handles in the `syscall` package
