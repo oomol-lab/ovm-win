@@ -26,13 +26,13 @@ type Context struct {
 func New(opt *types.RunOpt, version types.Version) *Context {
 	return &Context{
 		jsonPath: filepath.Join(opt.ImageDir, "versions.json"),
-		Version:  types.Version{},
+		Version:  version,
 		RunOpt:   *opt,
 	}
 }
 
 func (c *Context) save() error {
-	data, err := json.Marshal(c)
+	data, err := json.Marshal(c.Version)
 	if err != nil {
 		return fmt.Errorf("failed to marshal versions: %w", err)
 	}
@@ -46,7 +46,7 @@ func (c *Context) save() error {
 
 func (c *Context) needUpdate() (result []types.VersionKey) {
 	log := c.Logger
-	jsonVersion := &Context{}
+	jsonVersion := &types.Version{}
 	data, err := os.ReadFile(c.jsonPath)
 	if err != nil {
 		log.Warnf("failed to read versions.json file: %v", err)
