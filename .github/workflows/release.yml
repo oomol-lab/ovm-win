@@ -13,6 +13,12 @@ jobs:
   release:
     runs-on: windows-latest
     steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "arn:aws:iam::${{ secrets.AWS_IAM_ACCOUNT_ID }}:role/github-action-oomol-lab-ovm-win"
+          role-session-name: "github-action-oomol-lab-ovm-win"
+          aws-region: us-east-1
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -62,13 +68,6 @@ jobs:
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: "arn:aws:iam::${{ secrets.AWS_IAM_ACCOUNT_ID }}:role/github-action-ovm-lab-ovm-win"
-          role-session-name: "github-action-ovm-lab-ovm-win"
-          aws-region: us-east-1
 
       - name: Get Tag Name
         shell: bash
