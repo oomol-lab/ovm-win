@@ -4,6 +4,11 @@ on:
     tags:
       - "v*.*.*"
 
+permissions:
+  contents: read
+  id-token: write
+  packages: read
+
 jobs:
   release:
     runs-on: windows-latest
