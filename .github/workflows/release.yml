@@ -74,6 +74,7 @@ jobs:
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
       - name: Upload To S3
+        shell: bash
         run: |
           aws s3 cp \
             ./out/ \
