@@ -20,8 +20,8 @@ func Ready(ctx context.Context, podmanPort int) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// See: https://docs.podman.io/en/latest/_static/api.html?version=v4.0#tag/images/operation/ImageListLibpod
-	url := fmt.Sprintf("http://127.0.0.1:%d/libpod/images/json", podmanPort)
+	// See: https://docs.podman.io/en/latest/_static/api.html?version=v4.0#tag/images-(compat)/operation/ImageList
+	url := fmt.Sprintf("http://127.0.0.1:%d/images/json", podmanPort)
 	for {
 		if _, err := request.Get(ctx, url); err != nil {
 			if ctx.Err() != nil {
