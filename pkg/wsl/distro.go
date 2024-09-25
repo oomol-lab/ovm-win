@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
@@ -162,9 +163,19 @@ func Launch(ctx context.Context, log *logger.Context, opt *types.RunOpt) error {
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
+		util.RegisteredExitFuncs(func() {
+			if err := RequestStop(log, opt.Name); err != nil {
+				log.Warnf("Failed to stop distro %s: %v", opt.Name, err)
+			}
+		})
+
 		return launchOVMD(ctx, opt)
 	})
 	g.Go(func() error {
+		// TODO: ovmd needs some time to kill the previous podman processes.
+		//   This is just a temporary solution, waiting for ovmd to support sending the ready event.
+		//   @BlackHole1
+		time.Sleep(1 * time.Second)
 		if err := podman.Ready(ctx, opt.PodmanPort); err != nil {
 			return fmt.Errorf("podman is not ready: %w", err)
 		}
