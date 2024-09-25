@@ -164,9 +164,11 @@ func Launch(ctx context.Context, log *logger.Context, opt *types.RunOpt) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		util.RegisteredExitFuncs(func() {
-			if err := RequestStop(log, opt.Name); err != nil {
-				log.Warnf("Failed to stop distro %s: %v", opt.Name, err)
+			log.Info("Stopping distro...")
+			if err := RequestStop(log, opt.DistroName); err != nil {
+				log.Warnf("Failed to stop distro %s: %v", opt.DistroName, err)
 			}
+			log.Info("Distro stopped")
 		})
 
 		return launchOVMD(ctx, opt)
