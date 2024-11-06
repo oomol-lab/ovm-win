@@ -5,7 +5,9 @@ package util
 
 import (
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/sys/windows"
 )
@@ -52,4 +54,13 @@ func CachePath() (string, bool) {
 	}
 
 	return "", false
+}
+
+// HostPathToWSL host path to wsl path
+// e.g. C:\Users\bh\test.txt -> /mnt/c/Users/bh/test.txt
+func HostPathToWSL(p string) string {
+	drive := strings.ToLower(p[:1])
+	target := p[2:]
+
+	return path.Join("/", "mnt", drive, strings.Replace(target, "\\", "/", -1))
 }
