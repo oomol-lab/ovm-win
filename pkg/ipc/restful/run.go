@@ -157,7 +157,10 @@ func (r *runPrepare) exec(w http.ResponseWriter, req *http.Request) {
 		case <-doneCh:
 			r.log.Warnf("Command execution finished")
 			return
-		case err := <-errCh:
+		case err, ok := <-errCh:
+			if !ok {
+				return
+			}
 			_, _ = fmt.Fprintf(w, "event: error\n")
 			_, _ = fmt.Fprintf(w, "data: %s\n\n", encodeSSE(err))
 			w.(http.Flusher).Flush()
