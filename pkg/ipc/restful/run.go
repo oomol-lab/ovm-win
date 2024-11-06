@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -189,7 +191,16 @@ func (r *runPrepare) needWait(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func exec(ctx context.Context, r *runPrepare, command string, outCh *infinity.Channel[string], errCh chan string) error {
-	arg := []string{"-d", r.opt.DistroName, "sh", "-c", command}
+	cf := filepath.Join(os.TempDir(), fmt.Sprintf("ovm-exec-%d.sh", time.Now().UnixNano()))
+	if err := os.WriteFile(cf, []byte(command), 0o644); err != nil {
+		return fmt.Errorf("failed to write command to file: %w", err)
+	}
+	defer func() {
+		_ = os.Remove(cf)
+	}()
+
+	cfWSL := util.HostPathToWSL(cf)
+	arg := []string{"-d", r.opt.DistroName, "sh", "-c", fmt.Sprintf("sh +x %s", cfWSL)}
 	cmd := util.SilentCmdContext(ctx, wsl.Find(), arg...)
 
 	cmd.Env = []string{"WSL_UTF8=1"}
