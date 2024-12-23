@@ -11,9 +11,8 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-// fast restart
 // ref: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-exitwindowsex#parameters
-const flags = windows.EWX_HYBRID_SHUTDOWN | windows.EWX_REBOOT | windows.EWX_RESTARTAPPS | windows.EWX_FORCEIFHUNG
+const flags = windows.EWX_REBOOT | windows.EWX_RESTARTAPPS | windows.EWX_FORCEIFHUNG
 
 // "Application: Installation (Planned)" A planned restart or shutdown to perform application installation.
 // ref: https://learn.microsoft.com/en-us/windows/win32/shutdown/system-shutdown-reason-codes
