@@ -30,11 +30,12 @@ type prepare string
 const (
 	SystemNotSupport prepare = "SystemNotSupport"
 
-	NeedEnableFeature    prepare = "NeedEnableFeature"
-	EnableFeaturing      prepare = "EnableFeaturing"
-	EnableFeatureFailed  prepare = "EnableFeatureFailed"
-	EnableFeatureSuccess prepare = "EnableFeatureSuccess"
-	NeedReboot           prepare = "NeedReboot"
+	NotSupportVirtualization prepare = "NotSupportVirtualization"
+	NeedEnableFeature        prepare = "NeedEnableFeature"
+	EnableFeaturing          prepare = "EnableFeaturing"
+	EnableFeatureFailed      prepare = "EnableFeatureFailed"
+	EnableFeatureSuccess     prepare = "EnableFeatureSuccess"
+	NeedReboot               prepare = "NeedReboot"
 
 	NeedUpdateWSL    prepare = "NeedUpdateWSL"
 	UpdatingWSL      prepare = "UpdatingWSL"

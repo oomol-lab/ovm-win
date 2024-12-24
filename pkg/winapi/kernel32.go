@@ -25,3 +25,8 @@ func AttachConsole(pid uintptr) error {
 
 	return nil
 }
+
+func IsProcessorFeaturePresent(feature int) bool {
+	ret, _, _ := isProcessorFeaturePresent.Call(uintptr(feature))
+	return ret != 0
+}
