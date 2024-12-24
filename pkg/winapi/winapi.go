@@ -15,10 +15,11 @@ var (
 	kernel32 *windows.LazyDLL
 	mpr      *windows.LazyDLL
 
-	shellExecuteEx       *windows.LazyProc
-	freeConsole          *windows.LazyProc
-	attachConsole        *windows.LazyProc
-	wNetGetUniversalName *windows.LazyProc
+	shellExecuteEx            *windows.LazyProc
+	freeConsole               *windows.LazyProc
+	attachConsole             *windows.LazyProc
+	isProcessorFeaturePresent *windows.LazyProc
+	wNetGetUniversalName      *windows.LazyProc
 )
 
 func init() {
@@ -31,6 +32,7 @@ func init() {
 	shellExecuteEx = shell32.NewProc("ShellExecuteExW")
 	freeConsole = kernel32.NewProc("FreeConsole")
 	attachConsole = kernel32.NewProc("AttachConsole")
+	isProcessorFeaturePresent = kernel32.NewProc("IsProcessorFeaturePresent")
 	wNetGetUniversalName = mpr.NewProc("WNetGetUniversalNameW")
 }
 

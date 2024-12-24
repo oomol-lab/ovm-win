@@ -15,6 +15,7 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/types"
 	"github.com/oomol-lab/ovm-win/pkg/util"
+	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
 )
 
 var (
@@ -24,6 +25,13 @@ var (
 
 func Check(opt *types.PrepareOpt) {
 	log := opt.Logger
+
+	if !isSupportedVirtualization(log) {
+		log.Info("Virtualization is not supported")
+		event.NotifyPrepare(event.NotSupportVirtualization)
+		return
+	}
+
 	if isEnabled := isFeatureEnabled(log); !isEnabled {
 		log.Info("WSL2 feature is not enabled")
 		event.NotifyPrepare(event.NeedEnableFeature)
@@ -49,6 +57,21 @@ func Check(opt *types.PrepareOpt) {
 	event.NotifyPrepare(event.NeedUpdateWSL)
 	opt.CanUpdateWSL = true
 	return
+}
+
+func isSupportedVirtualization(log *logger.Context) bool {
+	vf, slat := sys.IsSupportedVirtualization()
+	// If the CPU does not support SLAT, WSL2 cannot be started (but WSL1 can be started).
+	// In modern CPUs, almost all CPUs support SLAT.
+	// It is not possible to strictly determine this through `vf && slat`, because in VMware, SLAT is always false (even if "Virtualize Intel VT-x/EPT or AMD-V/RVI" is checked).
+	// See:
+	// 		https://github.com/microsoft/WSL/issues/4709
+	// 		https://www.reddit.com/r/bashonubuntuonwindows/comments/izf4qp/cpus_without_slat_capability_cant_run_wsl_2/
+	if !slat {
+		log.Warn("SLAT is not supported")
+	}
+
+	return vf
 }
 
 func existsKernel() bool {
