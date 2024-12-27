@@ -5,6 +5,7 @@ package wsl
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -19,27 +20,27 @@ import (
 )
 
 var (
-	_onceIsFeatureEnabled sync.Once
-	_isFeatureEnabled     bool
+	_onceIsFeatureEnabled   sync.Once
+	_isFeatureEnabled       bool
+	alreadyExistsWSLDistros bool
 )
 
 func Check(opt *types.PrepareOpt) {
 	log := opt.Logger
 
-	if !isSupportedVirtualization(log) {
-		log.Info("Virtualization is not supported")
-		event.NotifyPrepare(event.NotSupportVirtualization)
-		return
-	}
+	if list, err := getAllWSLDistros(log, false); err != nil || len(list) == 0 {
+		if isEnabled := isFeatureEnabled(log); !isEnabled {
+			log.Info("WSL2 feature is not enabled")
+			event.NotifyPrepare(event.NeedEnableFeature)
+			opt.CanEnableFeature = true
+			return
+		}
 
-	if isEnabled := isFeatureEnabled(log); !isEnabled {
-		log.Info("WSL2 feature is not enabled")
-		event.NotifyPrepare(event.NeedEnableFeature)
-		opt.CanEnableFeature = true
-		return
+		log.Info("WSL2 feature is already enabled")
+	} else {
+		alreadyExistsWSLDistros = true
+		log.Info("Current system exists WSL2 distro, skip check system feature")
 	}
-
-	log.Info("WSL2 feature is already enabled")
 
 	shouldUpdate, err := shouldUpdateWSL(log)
 	if err == nil && !shouldUpdate {
@@ -59,19 +60,67 @@ func Check(opt *types.PrepareOpt) {
 	return
 }
 
+func CheckBIOS(opt *types.PrepareOpt) {
+	log := opt.Logger
+
+	if alreadyExistsWSLDistros {
+		return
+	}
+
+	if isSupportedVirtualization(log) {
+		return
+	}
+
+	if isWillReportExpectedErrorInMountVHDX(log, opt) {
+		return
+	}
+
+	log.Info("Virtualization is not supported")
+	event.NotifyPrepare(event.NotSupportVirtualization)
+
+	return
+}
+
 func isSupportedVirtualization(log *logger.Context) bool {
 	vf, slat := sys.IsSupportedVirtualization()
+	if !slat {
+		log.Warn("SLAT is not supported")
+	}
+
+	if !vf {
+		log.Warn("VT-x is not supported")
+	}
+
 	// If the CPU does not support SLAT, WSL2 cannot be started (but WSL1 can be started).
 	// In modern CPUs, almost all CPUs support SLAT.
 	// It is not possible to strictly determine this through `vf && slat`, because in VMware, SLAT is always false (even if "Virtualize Intel VT-x/EPT or AMD-V/RVI" is checked).
 	// See:
 	// 		https://github.com/microsoft/WSL/issues/4709
 	// 		https://www.reddit.com/r/bashonubuntuonwindows/comments/izf4qp/cpus_without_slat_capability_cant_run_wsl_2/
-	if !slat {
-		log.Warn("SLAT is not supported")
+	return vf
+}
+
+func isWillReportExpectedErrorInMountVHDX(log *logger.Context, opt *types.PrepareOpt) bool {
+	tempVhdx := filepath.Join(os.TempDir(), fmt.Sprintf("ovm-win-%s-%s.vhdx", opt.Name, util.RandomString(5)))
+	defer func() {
+		os.RemoveAll(tempVhdx)
+	}()
+
+	_, err := wslExec(log, "--mount", "--bare", "--vhd", tempVhdx)
+	if err == nil {
+		_, _ = wslExec(log, "--unmount", tempVhdx)
+		log.Warnf("Unexpected loading succeeded; WSL may have modified the mechanism. In this case, we believe there is no issue")
+		return true
 	}
 
-	return vf
+	if strings.Contains(err.Error(), "WSL_E_WSL2_NEEDED") {
+		log.Warn("Mount vhdx failed, BIOS may not support virtualization")
+		return false
+	}
+
+	log.Infof("Mounting vhdx results in an expected error: %v", err)
+
+	return true
 }
 
 func existsKernel() bool {

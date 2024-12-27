@@ -3,7 +3,15 @@
 
 package util
 
-import "hash/fnv"
+import (
+	"hash/fnv"
+	"math/rand"
+	"time"
+)
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 const initSize uint64 = 301 * 1024 * 1024 * 1024
 
@@ -21,4 +29,14 @@ func generateNumberFNV(s string) uint32 {
 	hash := fnv.New32a()
 	_, _ = hash.Write([]byte(s))
 	return hash.Sum32()%50000 + 1
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+func RandomString(l int) string {
+	b := make([]rune, l)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }

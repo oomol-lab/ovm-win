@@ -95,6 +95,7 @@ func (c *PrepareContext) Start() error {
 	case <-ctx.Done():
 		return fmt.Errorf("app unexpectedly exit, because the context is done, ctx err: %v", context.Cause(ctx))
 	case <-channel.ReceiveWSLEnvReady():
+		wsl.CheckBIOS(&c.PrepareOpt)
 		return nil
 	}
 }
