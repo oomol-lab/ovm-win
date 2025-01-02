@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package restful
@@ -16,13 +16,13 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/wsl"
 )
 
-type routerPrepare struct {
-	opt *types.PrepareOpt
+type routerInit struct {
+	opt *types.InitOpt
 	log *logger.Context
 }
 
-func SetupPrepare(opt *types.PrepareOpt) (s Server, err error) {
-	rp := &routerPrepare{
+func SetupInit(opt *types.InitOpt) (s Server, err error) {
+	rp := &routerInit{
 		opt: opt,
 		log: opt.Logger,
 	}
@@ -39,11 +39,11 @@ func SetupPrepare(opt *types.PrepareOpt) (s Server, err error) {
 	}, nil
 }
 
-func (r *routerPrepare) Close() error {
+func (r *routerInit) Close() error {
 	return nil
 }
 
-func (r *routerPrepare) mux() http.Handler {
+func (r *routerInit) mux() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/reboot", mustPost(r.log, middlewareLog(r.log, r.reboot)))
 	mux.Handle("/enable-feature", mustPost(r.log, middlewareLog(r.log, r.enableFeature)))
@@ -59,7 +59,7 @@ type rebootBody struct {
 	Later bool `json:"later"`
 }
 
-func (r *routerPrepare) reboot(w http.ResponseWriter, req *http.Request) {
+func (r *routerInit) reboot(w http.ResponseWriter, req *http.Request) {
 	if !r.opt.CanReboot {
 		r.log.Warn("Reboot is not allowed")
 		http.Error(w, "reboot is not allowed", http.StatusForbidden)
@@ -92,7 +92,7 @@ func (r *routerPrepare) reboot(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (r *routerPrepare) enableFeature(w http.ResponseWriter, req *http.Request) {
+func (r *routerInit) enableFeature(w http.ResponseWriter, req *http.Request) {
 	if !r.opt.CanEnableFeature {
 		r.log.Warn("Enable feature is not allowed")
 		http.Error(w, "enable feature is not allowed", http.StatusForbidden)
@@ -106,7 +106,7 @@ func (r *routerPrepare) enableFeature(w http.ResponseWriter, req *http.Request) 
 	}
 }
 
-func (r *routerPrepare) updateWSL(w http.ResponseWriter, req *http.Request) {
+func (r *routerInit) updateWSL(w http.ResponseWriter, req *http.Request) {
 	if !r.opt.CanUpdateWSL {
 		r.log.Warn("Update WSL is not allowed")
 		http.Error(w, "update WSL is not allowed", http.StatusForbidden)

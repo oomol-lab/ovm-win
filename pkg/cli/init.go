@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package cli
@@ -20,19 +20,19 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-type PrepareContext struct {
-	types.PrepareOpt
+type InitContext struct {
+	types.InitOpt
 }
 
-func PrepareCmd(p *types.PrepareOpt) *PrepareContext {
-	c := &PrepareContext{
+func InitCmd(p *types.InitOpt) *InitContext {
+	c := &InitContext{
 		*p,
 	}
-	c.RestfulEndpoint = `\\.\pipe\ovm-prepare-` + c.Name
+	c.RestfulEndpoint = `\\.\pipe\ovm-init-` + c.Name
 	return c
 }
 
-func (c *PrepareContext) Setup() error {
+func (c *InitContext) Setup() error {
 	isElevated, err := sys.IsElevatedProcess()
 	if err != nil {
 		return fmt.Errorf("failed to check if the current process is an elevated child process: %w", err)
@@ -59,18 +59,18 @@ func (c *PrepareContext) Setup() error {
 	return nil
 }
 
-func (c *PrepareContext) Start() error {
+func (c *InitContext) Start() error {
 	if c.IsElevatedProcess {
-		_ = wsl.Install(&c.PrepareOpt)
+		_ = wsl.Install(&c.InitOpt)
 		util.Exit(0)
 	}
 
 	if !sys.SupportWSL2(c.Logger) {
-		event.NotifyPrepare(event.SystemNotSupport)
+		event.NotifyInit(event.SystemNotSupport)
 		return fmt.Errorf("WSL2 is not supported on this system, need Windows 10 version 19043 or higher")
 	}
 
-	r, err := restful.SetupPrepare(&c.PrepareOpt)
+	r, err := restful.SetupInit(&c.InitOpt)
 	if err != nil {
 		return fmt.Errorf("failed to setup RESTful server: %w", err)
 	}
@@ -89,18 +89,18 @@ func (c *PrepareContext) Start() error {
 		return util.WaitBindPID(ctx, c.Logger, c.BindPID)
 	})
 
-	wsl.Check(&c.PrepareOpt)
+	wsl.Check(&c.InitOpt)
 
 	select {
 	case <-ctx.Done():
 		return fmt.Errorf("app unexpectedly exit, because the context is done, ctx err: %v", context.Cause(ctx))
 	case <-channel.ReceiveWSLEnvReady():
-		wsl.CheckBIOS(&c.PrepareOpt)
+		wsl.CheckBIOS(&c.InitOpt)
 		return nil
 	}
 }
 
-func (c *PrepareContext) moveConsoleToParent() {
+func (c *InitContext) moveConsoleToParent() {
 	// For debugging purposes, we need to redirect the console of the current process to the parent process
 	if c.IsElevatedProcess {
 		if err := sys.MoveConsoleToParent(); err != nil {
@@ -113,9 +113,9 @@ func (c *PrepareContext) moveConsoleToParent() {
 	}
 }
 
-func (c *PrepareContext) loggerInstance() (*logger.Context, error) {
+func (c *InitContext) loggerInstance() (*logger.Context, error) {
 	if c.IsElevatedProcess {
-		return logger.NewWithChildProcess(c.LogPath, "prepare-"+c.Name)
+		return logger.NewWithChildProcess(c.LogPath, "init-"+c.Name)
 	}
-	return logger.New(c.LogPath, "prepare-"+c.Name)
+	return logger.New(c.LogPath, "init-"+c.Name)
 }

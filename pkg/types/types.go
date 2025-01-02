@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package types
@@ -14,7 +14,7 @@ type BasicOpt struct {
 	Logger          *logger.Context
 }
 
-type PrepareOpt struct {
+type InitOpt struct {
 	IsElevatedProcess bool
 	CanReboot         bool
 	CanEnableFeature  bool
