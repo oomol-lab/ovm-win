@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package restful
@@ -23,7 +23,7 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/wsl"
 )
 
-type runPrepare struct {
+type routerRun struct {
 	opt *types.RunOpt
 	log *logger.Context
 
@@ -32,7 +32,7 @@ type runPrepare struct {
 }
 
 func SetupRun(opt *types.RunOpt) (s Server, err error) {
-	rp := &runPrepare{
+	rp := &routerRun{
 		opt:       opt,
 		log:       opt.Logger,
 		waitClose: make(chan struct{}, 1),
@@ -50,7 +50,7 @@ func SetupRun(opt *types.RunOpt) (s Server, err error) {
 	}, nil
 }
 
-func (r *runPrepare) Close() error {
+func (r *routerRun) Close() error {
 	if r.needWaitClose {
 		select {
 		case <-r.waitClose:
@@ -64,7 +64,7 @@ func (r *runPrepare) Close() error {
 	return nil
 }
 
-func (r *runPrepare) mux() http.Handler {
+func (r *routerRun) mux() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/info", mustGet(r.log, middlewareLog(r.log, r.info)))
 	mux.Handle("/request-stop", mustPost(r.log, middlewareLog(r.log, r.needWait(r.requestStop))))
@@ -79,14 +79,14 @@ type infoResponse struct {
 	PodmanPort int    `json:"podmanPort"`
 }
 
-func (r *runPrepare) info(w http.ResponseWriter, req *http.Request) {
+func (r *routerRun) info(w http.ResponseWriter, req *http.Request) {
 	_ = json.NewEncoder(w).Encode(&infoResponse{
 		PodmanHost: "127.0.0.1",
 		PodmanPort: r.opt.PodmanPort,
 	})
 }
 
-func (r *runPrepare) requestStop(w http.ResponseWriter, req *http.Request) {
+func (r *routerRun) requestStop(w http.ResponseWriter, req *http.Request) {
 	if err := wsl.RequestStop(r.log, r.opt.DistroName); err != nil {
 		r.log.Warnf("Failed to request stop: %v", err)
 		http.Error(w, "failed to request stop", http.StatusInternalServerError)
@@ -96,7 +96,7 @@ func (r *runPrepare) requestStop(w http.ResponseWriter, req *http.Request) {
 	r.opt.StoppedWithAPI = true
 }
 
-func (r *runPrepare) stop(w http.ResponseWriter, req *http.Request) {
+func (r *routerRun) stop(w http.ResponseWriter, req *http.Request) {
 	if err := wsl.Stop(r.log, r.opt.DistroName); err != nil {
 		r.log.Warnf("Failed to stop: %v", err)
 		http.Error(w, "failed to stop", http.StatusInternalServerError)
@@ -110,7 +110,7 @@ type execBody struct {
 	Command string `json:"command"`
 }
 
-func (r *runPrepare) exec(w http.ResponseWriter, req *http.Request) {
+func (r *routerRun) exec(w http.ResponseWriter, req *http.Request) {
 	var body execBody
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
 		r.log.Warnf("Failed to decode request body: %v", err)
@@ -181,7 +181,7 @@ func (r *runPrepare) exec(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (r *runPrepare) needWait(next http.HandlerFunc) http.HandlerFunc {
+func (r *routerRun) needWait(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		r.needWaitClose = true
 
@@ -193,7 +193,7 @@ func (r *runPrepare) needWait(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func exec(ctx context.Context, r *runPrepare, command string, outCh *infinity.Channel[string], errCh chan string) error {
+func exec(ctx context.Context, r *routerRun, command string, outCh *infinity.Channel[string], errCh chan string) error {
 	cf := filepath.Join(os.TempDir(), fmt.Sprintf("ovm-exec-%d.sh", time.Now().UnixNano()))
 	if err := os.WriteFile(cf, []byte(command), 0o644); err != nil {
 		return fmt.Errorf("failed to write command to file: %w", err)

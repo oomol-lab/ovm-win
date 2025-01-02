@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package wsl
@@ -25,13 +25,13 @@ var (
 	alreadyExistsWSLDistros bool
 )
 
-func Check(opt *types.PrepareOpt) {
+func Check(opt *types.InitOpt) {
 	log := opt.Logger
 
 	if list, err := getAllWSLDistros(log, false); err != nil || len(list) == 0 {
 		if isEnabled := isFeatureEnabled(log); !isEnabled {
 			log.Info("WSL2 feature is not enabled")
-			event.NotifyPrepare(event.NeedEnableFeature)
+			event.NotifyInit(event.NeedEnableFeature)
 			opt.CanEnableFeature = true
 			return
 		}
@@ -55,12 +55,12 @@ func Check(opt *types.PrepareOpt) {
 		log.Info("WSL2 needs to be updated")
 	}
 
-	event.NotifyPrepare(event.NeedUpdateWSL)
+	event.NotifyInit(event.NeedUpdateWSL)
 	opt.CanUpdateWSL = true
 	return
 }
 
-func CheckBIOS(opt *types.PrepareOpt) {
+func CheckBIOS(opt *types.InitOpt) {
 	log := opt.Logger
 
 	if alreadyExistsWSLDistros {
@@ -76,7 +76,7 @@ func CheckBIOS(opt *types.PrepareOpt) {
 	}
 
 	log.Info("Virtualization is not supported")
-	event.NotifyPrepare(event.NotSupportVirtualization)
+	event.NotifyInit(event.NotSupportVirtualization)
 
 	return
 }
@@ -100,7 +100,7 @@ func isSupportedVirtualization(log *logger.Context) bool {
 	return vf
 }
 
-func isWillReportExpectedErrorInMountVHDX(log *logger.Context, opt *types.PrepareOpt) bool {
+func isWillReportExpectedErrorInMountVHDX(log *logger.Context, opt *types.InitOpt) bool {
 	tempVhdx := filepath.Join(os.TempDir(), fmt.Sprintf("ovm-win-%s-%s.vhdx", opt.Name, util.RandomString(5)))
 	defer func() {
 		os.RemoveAll(tempVhdx)

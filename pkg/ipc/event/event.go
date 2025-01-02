@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package event
@@ -16,51 +16,54 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/logger"
 )
 
-type key string
+type stage string
 
 const (
-	kPrepare key = "prepare"
-	kRun     key = "run"
-	kError   key = "error"
-	kExit    key = "exit"
+	kInit stage = "init"
+	kRun  stage = "run"
 )
 
-type prepare string
+type nameInit string
 
 const (
-	SystemNotSupport prepare = "SystemNotSupport"
+	SystemNotSupport nameInit = "SystemNotSupport"
 
-	NotSupportVirtualization prepare = "NotSupportVirtualization"
-	NeedEnableFeature        prepare = "NeedEnableFeature"
-	EnableFeaturing          prepare = "EnableFeaturing"
-	EnableFeatureFailed      prepare = "EnableFeatureFailed"
-	EnableFeatureSuccess     prepare = "EnableFeatureSuccess"
-	NeedReboot               prepare = "NeedReboot"
+	NotSupportVirtualization nameInit = "NotSupportVirtualization"
+	NeedEnableFeature        nameInit = "NeedEnableFeature"
+	EnableFeaturing          nameInit = "EnableFeaturing"
+	EnableFeatureFailed      nameInit = "EnableFeatureFailed"
+	EnableFeatureSuccess     nameInit = "EnableFeatureSuccess"
+	NeedReboot               nameInit = "NeedReboot"
 
-	NeedUpdateWSL    prepare = "NeedUpdateWSL"
-	UpdatingWSL      prepare = "UpdatingWSL"
-	UpdateWSLFailed  prepare = "UpdateWSLFailed"
-	UpdateWSLSuccess prepare = "UpdateWSLSuccess"
+	NeedUpdateWSL    nameInit = "NeedUpdateWSL"
+	UpdatingWSL      nameInit = "UpdatingWSL"
+	UpdateWSLFailed  nameInit = "UpdateWSLFailed"
+	UpdateWSLSuccess nameInit = "UpdateWSLSuccess"
+	InitExit         nameInit = "Exit"
+	InitError        nameInit = "Error"
 )
 
-type run string
+type nameRun string
 
 const (
-	UpdatingRootFS      run = "UpdatingRootFS"
-	UpdateRootFSFailed  run = "UpdateRootFSFailed"
-	UpdateRootFSSuccess run = "UpdateRootFSSuccess"
+	UpdatingRootFS      nameRun = "UpdatingRootFS"
+	UpdateRootFSFailed  nameRun = "UpdateRootFSFailed"
+	UpdateRootFSSuccess nameRun = "UpdateRootFSSuccess"
 
-	UpdatingData      run = "UpdatingData"
-	UpdateDataFailed  run = "UpdateDataFailed"
-	UpdateDataSuccess run = "UpdateDataSuccess"
+	UpdatingData      nameRun = "UpdatingData"
+	UpdateDataFailed  nameRun = "UpdateDataFailed"
+	UpdateDataSuccess nameRun = "UpdateDataSuccess"
 
-	Starting run = "Starting"
-	Ready    run = "Ready"
+	Starting nameRun = "Starting"
+	Ready    nameRun = "Ready"
+	RunExit  nameRun = "Exit"
+	RunError nameRun = "Error"
 )
 
 type datum struct {
-	name    key
-	message string
+	stage stage
+	name  string
+	value string
 }
 
 type event struct {
@@ -92,7 +95,7 @@ func Setup(log *logger.Context, socketPath string) {
 
 	go func() {
 		for datum := range e.channel.Out() {
-			uri := fmt.Sprintf("http://ovm/notify?event=%s&message=%s", datum.name, url.QueryEscape(datum.message))
+			uri := fmt.Sprintf("http://ovm/notify?stage=%s&name=%s&value=%s", datum.stage, url.QueryEscape(datum.name), url.QueryEscape(datum.value))
 			e.log.Infof("Notify %s event to %s", datum.name, uri)
 
 			if resp, err := e.client.Get(uri); err != nil {
@@ -104,7 +107,7 @@ func Setup(log *logger.Context, socketPath string) {
 				}
 			}
 
-			if datum.name == kExit || datum.message == string(NeedReboot) {
+			if datum.name == "Exit" || datum.name == string(NeedReboot) {
 				waitDone <- struct{}{}
 				return
 			}
@@ -112,38 +115,38 @@ func Setup(log *logger.Context, socketPath string) {
 	}()
 }
 
-func notify(k key, v string) {
+func notify(c stage, name string, value ...string) {
 	if e == nil {
 		return
 	}
 
+	v := ""
+	if len(value) == 0 {
+		v = ""
+	} else {
+		v = value[0]
+	}
+
 	e.channel.In() <- &datum{
-		name:    k,
-		message: v,
+		stage: c,
+		name:  name,
+		value: v,
 	}
 
 	// wait for the event to be processed
 	// Exit event indicates the main process exit
 	// NeedReboot event indicates the child process exit
-	if k == kExit || v == string(NeedReboot) {
+	if name == "Exit" || name == string(NeedReboot) {
 		<-waitDone
 		close(waitDone)
 		e.channel.Close()
 	}
 }
 
-func NotifyPrepare(v prepare) {
-	notify(kPrepare, string(v))
+func NotifyInit(name nameInit, value ...string) {
+	notify(kInit, string(name), value...)
 }
 
-func NotifyRun(v run) {
-	notify(kRun, string(v))
-}
-
-func NotifyError(err error) {
-	notify(kError, err.Error())
-}
-
-func NotifyExit() {
-	notify(kExit, "")
+func NotifyRun(name nameRun, value ...string) {
+	notify(kRun, string(name), value...)
 }

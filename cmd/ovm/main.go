@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package main
@@ -26,8 +26,8 @@ var (
 )
 
 var (
-	prepareCtx *ocli.PrepareContext
-	runCtx     *ocli.RunContext
+	initCtx *ocli.InitContext
+	runCtx  *ocli.RunContext
 )
 
 func cmd() error {
@@ -35,10 +35,10 @@ func cmd() error {
 		HideHelpCommand: true,
 		Commands: []*cli.Command{
 			{
-				Name:  "prepare",
+				Name:  "init",
 				Usage: "Check the System Requirements",
 				Before: func(ctx context.Context, command *cli.Command) error {
-					prepareCtx = ocli.PrepareCmd(&types.PrepareOpt{
+					initCtx = ocli.InitCmd(&types.InitOpt{
 						IsElevatedProcess: false,
 						CanEnableFeature:  false,
 						CanReboot:         false,
@@ -51,11 +51,11 @@ func cmd() error {
 						},
 					})
 
-					return prepareCtx.Setup()
+					return initCtx.Setup()
 				},
 				Action: func(ctx context.Context, command *cli.Command) (err error) {
-					if err = prepareCtx.Start(); err != nil {
-						event.NotifyError(err)
+					if err = initCtx.Start(); err != nil {
+						event.NotifyInit(event.InitError, err.Error())
 					}
 					return
 				},
@@ -80,7 +80,7 @@ func cmd() error {
 				},
 				Action: func(ctx context.Context, command *cli.Command) (err error) {
 					if err = runCtx.Start(); err != nil {
-						event.NotifyError(err)
+						event.NotifyRun(event.RunError, err.Error())
 					}
 					return
 				},
@@ -143,7 +143,11 @@ func cmd() error {
 
 func main() {
 	err := cmd()
-	event.NotifyExit()
+	if initCtx != nil {
+		event.NotifyInit(event.InitExit)
+	} else {
+		event.NotifyRun(event.RunExit)
+	}
 
 	if err != nil {
 		fmt.Println(err)

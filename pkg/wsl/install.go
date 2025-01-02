@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package wsl
@@ -24,24 +24,24 @@ import (
 // Install installs WSL2 feature
 //
 // Enable feature need admin privileges and reboot
-func Install(opt *types.PrepareOpt) error {
+func Install(opt *types.InitOpt) error {
 	log := opt.Logger
 	if !opt.IsElevatedProcess {
-		event.NotifyPrepare(event.EnableFeaturing)
+		event.NotifyInit(event.EnableFeaturing)
 	}
 
 	if !sys.IsAdmin() {
 		log.Info("Current process is not running with admin privileges, will open a new process with admin privileges")
 		if err := sys.ReRunAsAdminWait(); err != nil {
-			event.NotifyPrepare(event.EnableFeatureFailed)
+			event.NotifyInit(event.EnableFeatureFailed)
 			return fmt.Errorf("failed to run as admin: %w", err)
 		}
 
 		log.Info("Admin process already successfully executed and exited")
 		opt.CanEnableFeature = false
 		opt.CanReboot = true
-		event.NotifyPrepare(event.EnableFeatureSuccess)
-		event.NotifyPrepare(event.NeedReboot)
+		event.NotifyInit(event.EnableFeatureSuccess)
+		event.NotifyInit(event.NeedReboot)
 		return nil
 	}
 
@@ -54,7 +54,7 @@ func Install(opt *types.PrepareOpt) error {
 			util.Exit(1)
 		}
 
-		event.NotifyPrepare(event.EnableFeatureFailed)
+		event.NotifyInit(event.EnableFeatureFailed)
 		return wrapperErr
 	}
 
@@ -66,12 +66,12 @@ func Install(opt *types.PrepareOpt) error {
 
 	opt.CanEnableFeature = false
 	opt.CanReboot = true
-	event.NotifyPrepare(event.EnableFeatureSuccess)
-	event.NotifyPrepare(event.NeedReboot)
+	event.NotifyInit(event.EnableFeatureSuccess)
+	event.NotifyInit(event.NeedReboot)
 	return nil
 }
 
-func doEnableFeature(opt *types.PrepareOpt) error {
+func doEnableFeature(opt *types.InitOpt) error {
 	log := opt.Logger
 	logPath, err := logger.NewOnlyCreate(opt.LogPath, opt.Name+"-dism")
 	if err != nil {
@@ -109,10 +109,10 @@ type latest struct {
 const latestURL = "https://static.oomol.com/wsl-msi/latest.json"
 
 // Update updates WSL2(include kernel)
-func Update(opt *types.PrepareOpt) error {
+func Update(opt *types.InitOpt) error {
 	log := opt.Logger
 
-	event.NotifyPrepare(event.UpdatingWSL)
+	event.NotifyInit(event.UpdatingWSL)
 
 	log.Info("Downloading the latest version of WSL2...")
 
@@ -123,13 +123,13 @@ func Update(opt *types.PrepareOpt) error {
 
 	body, err := request.Get(ctx, latestURL)
 	if err != nil {
-		event.NotifyPrepare(event.UpdateWSLFailed)
+		event.NotifyInit(event.UpdateWSLFailed)
 		return fmt.Errorf("failed to get latest version: %w", err)
 	}
 
 	var l latest
 	if err := json.Unmarshal(body, &l); err != nil {
-		event.NotifyPrepare(event.UpdateWSLFailed)
+		event.NotifyInit(event.UpdateWSLFailed)
 		return fmt.Errorf("failed to unmarshal latest version: %w", err)
 	}
 
@@ -137,18 +137,18 @@ func Update(opt *types.PrepareOpt) error {
 
 	cachePath, ok := util.CachePath()
 	if !ok {
-		event.NotifyPrepare(event.UpdateWSLFailed)
+		event.NotifyInit(event.UpdateWSLFailed)
 		return fmt.Errorf("failed to get cache path")
 	}
 	if err := os.MkdirAll(cachePath, 0755); err != nil {
-		event.NotifyPrepare(event.UpdateWSLFailed)
+		event.NotifyInit(event.UpdateWSLFailed)
 		return fmt.Errorf("failed to create cache path: %w", err)
 	}
 
 	msi := filepath.Join(cachePath, "wsl2.msi")
 
 	if err := request.Download(context.Background(), log, l.X64.URL, msi, l.X64.Sha256); err != nil {
-		event.NotifyPrepare(event.UpdateWSLFailed)
+		event.NotifyInit(event.UpdateWSLFailed)
 		return fmt.Errorf("failed to download WSL2: %w", err)
 	}
 
@@ -158,12 +158,12 @@ func Update(opt *types.PrepareOpt) error {
 	}
 
 	if err := sys.RunAsAdminWait([]string{"msiexec", "/i", msi, "/passive", "/norestart", "/L*V", logPath}, opt.LogPath); err != nil {
-		event.NotifyPrepare(event.UpdateWSLFailed)
+		event.NotifyInit(event.UpdateWSLFailed)
 		return fmt.Errorf("failed to update WSL2: %w", err)
 	}
 
 	opt.CanUpdateWSL = false
-	event.NotifyPrepare(event.UpdateWSLSuccess)
+	event.NotifyInit(event.UpdateWSLSuccess)
 	return nil
 }
 
