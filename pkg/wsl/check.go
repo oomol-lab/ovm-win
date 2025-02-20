@@ -64,14 +64,15 @@ func CheckBIOS(opt *types.InitOpt) {
 	log := opt.Logger
 
 	if alreadyExistsWSLDistros {
+		log.Info("Skip check BIOS because WSL2 distro already exists")
 		return
 	}
 
-	if isSupportedVirtualization(log) {
-		return
-	}
+	// Based on the current situation, we cannot trust the results of SLAT and VF.
+	isSupportedVirtualization(log)
 
 	if isWillReportExpectedErrorInMountVHDX(log, opt) {
+		log.Info("Skip check BIOS because the expected error occurred when mounting vhdx")
 		return
 	}
 
@@ -85,10 +86,14 @@ func isSupportedVirtualization(log *logger.Context) bool {
 	vf, slat := sys.IsSupportedVirtualization()
 	if !slat {
 		log.Warn("SLAT is not supported")
+	} else {
+		log.Info("SLAT is supported")
 	}
 
 	if !vf {
 		log.Warn("VT-x is not supported")
+	} else {
+		log.Info("VT-x is supported")
 	}
 
 	// If the CPU does not support SLAT, WSL2 cannot be started (but WSL1 can be started).
