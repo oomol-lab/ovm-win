@@ -56,6 +56,8 @@ func cmd() error {
 				Action: func(ctx context.Context, command *cli.Command) (err error) {
 					if err = initCtx.Start(); err != nil {
 						event.NotifyInit(event.InitError, err.Error())
+					} else {
+						event.NotifyInit(event.InitSuccess)
 					}
 					return
 				},

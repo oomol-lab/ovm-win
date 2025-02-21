@@ -40,6 +40,7 @@ const (
 	UpdateWSLFailed  nameInit = "UpdateWSLFailed"
 	UpdateWSLSuccess nameInit = "UpdateWSLSuccess"
 	InitExit         nameInit = "Exit"
+	InitSuccess      nameInit = "Success"
 	InitError        nameInit = "Error"
 )
 
