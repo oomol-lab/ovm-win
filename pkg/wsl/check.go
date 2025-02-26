@@ -20,27 +20,21 @@ import (
 )
 
 var (
-	_onceIsFeatureEnabled   sync.Once
-	_isFeatureEnabled       bool
-	alreadyExistsWSLDistros bool
+	_onceIsFeatureEnabled sync.Once
+	_isFeatureEnabled     bool
 )
 
 func Check(opt *types.InitOpt) {
 	log := opt.Logger
 
-	if list, err := getAllWSLDistros(log, false); err != nil || len(list) == 0 {
-		if isEnabled := isFeatureEnabled(log); !isEnabled {
-			log.Info("WSL2 feature is not enabled")
-			event.NotifyInit(event.NeedEnableFeature)
-			opt.CanEnableFeature = true
-			return
-		}
-
-		log.Info("WSL2 feature is already enabled")
-	} else {
-		alreadyExistsWSLDistros = true
-		log.Info("Current system exists WSL2 distro, skip check system feature")
+	if isEnabled := isFeatureEnabled(log); !isEnabled {
+		log.Info("WSL2 feature is not enabled")
+		event.NotifyInit(event.NeedEnableFeature)
+		opt.CanEnableFeature = true
+		return
 	}
+
+	log.Info("WSL2 feature is already enabled")
 
 	shouldUpdate, err := shouldUpdateWSL(log)
 	if err == nil && !shouldUpdate {
@@ -63,7 +57,7 @@ func Check(opt *types.InitOpt) {
 func CheckBIOS(opt *types.InitOpt) {
 	log := opt.Logger
 
-	if alreadyExistsWSLDistros {
+	if list, err := getAllWSLDistros(log, false); err == nil && len(list) != 0 {
 		return
 	}
 
@@ -158,17 +152,62 @@ func isInstalled(log *logger.Context) bool {
 	return true
 }
 
-// isFeatureEnabled Checks if the WSL feature is enabled.
-// At the same time, `set-default-version 2` will also be configured.
-// The following two features need to be enabled:
-//  1. `Microsoft-Windows-Subsystem-Linux`
-//  2. `VirtualMachinePlatform`
+// isFeatureEnabled Check `Microsoft-Windows-Subsystem-Linux` and `VirtualMachinePlatform` are enabled
 func isFeatureEnabled(log *logger.Context) bool {
 	_onceIsFeatureEnabled.Do(func() {
 		// we cannot use the following methods for checking because these commands require administrative privileges.
 		// 	1.Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
 		// 	2.Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
-		_isFeatureEnabled = util.Silent(log, Find(), "--set-default-version", "2") == nil
+
+		// In the old version of WSL, we could check if the feature was enabled by calling the --set-default-version command,
+		// and if there was an error, it indicated that the feature was not enabled. However
+		// in the new version, this behavior has changed;even if the feature is not enabled, there will be no error.
+		//
+		// This command will also have a side effect: it will change the default version of WSL to 2. However, this side effect is expected.
+		if util.Silent(log, Find(), "--set-default-version", "2") != nil {
+			_isFeatureEnabled = false
+			return
+		}
+
+		{
+
+			out, err := wslExec(log, "--status")
+			if err != nil {
+				// --status The failure may be caused by issues such as the kernel file not existing,
+				// and we should not assume that this error indicates that the feature is not enabled.
+				_isFeatureEnabled = true
+				return
+			}
+
+			log.Infof("WSL --status result: %s", out)
+
+			lines := strings.Split(string(out), "\n")
+
+			// Delete the line below to avoid inaccuracies in the results.
+			// Default Distribution: Ubuntu
+			// Default Version: 2
+			hasUselessHeader := len(lines) >= 2 && strings.Contains(lines[0], ":") && strings.Contains(lines[1], ":")
+			if hasUselessHeader {
+				log.Info("Exist useless header")
+				lines = lines[2:]
+			}
+			lineStr := strings.Join(lines, "\n")
+
+			log.Infof("Cleaned wsl --status line: %s", lineStr)
+
+			keywords := []string{"Windows Subsystem for Linux", "BIOS", "wsl.exe", "enablevirtualization", "WSL1"}
+
+			for _, key := range keywords {
+				if strings.Contains(lineStr, key) {
+					log.Warnf("Find keyword: %s in status result", key)
+					_isFeatureEnabled = false
+					return
+				}
+			}
+		}
+
+		_isFeatureEnabled = true
+		return
 	})
 
 	return _isFeatureEnabled

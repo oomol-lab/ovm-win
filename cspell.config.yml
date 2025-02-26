@@ -43,6 +43,9 @@ words:
   - npipe
   - Npipe
   - sddl
+
+  # pkg/wsl
+  - enablevirtualization
 dictionaries:
   - companies
   - softwareTerms

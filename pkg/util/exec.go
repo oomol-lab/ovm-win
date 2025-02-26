@@ -1,12 +1,10 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package util
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -38,21 +36,6 @@ func SilentCmdContext(ctx context.Context, command string, args ...string) *exec
 	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: flagsCreateNoWindow}
 	return cmd
-}
-
-func Exec(log *logger.Context, command string, args ...string) (string, error) {
-	cmd := SilentCmd(command, args...)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	log.Infof("Running command: %s %s", command, strings.Join(args, " "))
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("`%v %v` failed: %v %v (%v)", command, strings.Join(args, " "), stderr.String(), stdout.String(), err)
-	}
-
-	return stdout.String(), nil
 }
 
 func EscapeArg(args []string) string {
