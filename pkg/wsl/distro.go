@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-License-Identifier: MPL-2.0
+
 package wsl
 
 import (
@@ -21,15 +24,6 @@ import (
 
 var ErrDistroNotExist = errors.New("distro does not exist")
 var ErrDistroNotRunning = errors.New("distro is not running")
-
-// Shutdown the wsl2 entirely
-func Shutdown(log *logger.Context) error {
-	if _, err := wslExec(log, "--shutdown"); err != nil {
-		return fmt.Errorf("could not shutdown WSL: %w", err)
-	}
-
-	return nil
-}
 
 func Terminate(log *logger.Context, distroName string) error {
 	if _, err := wslExec(log, "--terminate", distroName); err != nil {
@@ -250,6 +244,8 @@ func getAllWSLDistros(log *logger.Context, running bool) (map[string]struct{}, e
 	args := []string{"--list", "--quiet"}
 	if running {
 		args = append(args, "--running")
+	} else {
+		args = append(args, "--all")
 	}
 
 	out, err := wslExec(log, args...)
@@ -261,7 +257,7 @@ func getAllWSLDistros(log *logger.Context, running bool) (map[string]struct{}, e
 	scanner := bufio.NewScanner(bytes.NewReader(out))
 	scanner.Split(bufio.ScanLines)
 
-	// `wsl --list --quiet` output:
+	// `wsl --list --quiet --all` output:
 	//
 	//	Ubuntu
 	//	Debian
