@@ -24,7 +24,7 @@ var (
 	_isFeatureEnabled     bool
 )
 
-func Check(opt *types.InitOpt) {
+func CheckEnv(opt *types.InitOpt) {
 	log := opt.Logger
 
 	if isEnabled := isFeatureEnabled(log); !isEnabled {
@@ -36,21 +36,14 @@ func Check(opt *types.InitOpt) {
 
 	log.Info("WSL2 feature is already enabled")
 
-	shouldUpdate, err := shouldUpdateWSL(log)
-	if err == nil && !shouldUpdate {
-		log.Info("WSL2 is up to date")
-		channel.NotifyWSLEnvReady()
+	if shouldUpdateWSL(log) {
+		event.NotifyInit(event.NeedUpdateWSL)
+		opt.CanUpdateWSL = true
 		return
 	}
 
-	if err != nil {
-		log.Warnf("Failed to check if WSL2 needs to be updated: %v", err)
-	} else {
-		log.Info("WSL2 needs to be updated")
-	}
-
-	event.NotifyInit(event.NeedUpdateWSL)
-	opt.CanUpdateWSL = true
+	log.Info("WSL2 is up to date")
+	channel.NotifyWSLEnvReady()
 	return
 }
 
@@ -232,31 +225,35 @@ func wslVersion(log *logger.Context) (string, error) {
 
 const minVersion = "2.1.5"
 
-func shouldUpdateWSL(log *logger.Context) (bool, error) {
+func shouldUpdateWSL(log *logger.Context) bool {
 	if isInstalled := isInstalled(log); !isInstalled {
-		log.Info("WSL2 is not updated, ready to update")
-		return true, nil
+		log.Info("WSL2 is not updated, should update")
+		return true
 	}
 
 	v, err := wslVersion(log)
 	if err != nil {
-		return false, fmt.Errorf("failed to get WSL2 version: %w", err)
+		log.Warnf("Failed to get WSL2 version: %v", err)
+		return true
 	}
 
 	log.Infof("Current WSL2 version: %s", v)
 	currentVersion, err := version.NewVersion(v)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse current WSL2 version: %w", err)
+		log.Warnf("Failed to parse current WSL2 version: %v", err)
+		return true
 	}
 
 	minVersion, err := version.NewVersion(minVersion)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse min WSL2 version: %w", err)
+		log.Warnf("Failed to parse min WSL2 version: %v", err)
+		return true
 	}
 
 	if currentVersion.LessThan(minVersion) {
-		return true, nil
+		log.Infof("Current WSL2 version is less than min version: %s < %s", currentVersion, minVersion)
+		return true
 	}
 
-	return false, nil
+	return false
 }

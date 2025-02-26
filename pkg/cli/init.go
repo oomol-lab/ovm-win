@@ -89,7 +89,7 @@ func (c *InitContext) Start() error {
 		return util.WaitBindPID(ctx, c.Logger, c.BindPID)
 	})
 
-	wsl.Check(&c.InitOpt)
+	wsl.CheckEnv(&c.InitOpt)
 
 	select {
 	case <-ctx.Done():
