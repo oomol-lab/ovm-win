@@ -227,7 +227,7 @@ const minVersion = "2.1.5"
 
 func shouldUpdateWSL(log *logger.Context) bool {
 	if isInstalled := isInstalled(log); !isInstalled {
-		log.Info("WSL2 is not updated, ready to update")
+		log.Info("WSL2 is not updated, should update")
 		return true
 	}
 
