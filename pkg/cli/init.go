@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/oomol-lab/ovm-win/pkg/channel"
 	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
 	"github.com/oomol-lab/ovm-win/pkg/ipc/restful"
 	"github.com/oomol-lab/ovm-win/pkg/logger"
@@ -75,7 +74,9 @@ func (c *InitContext) Start() error {
 		return fmt.Errorf("failed to setup RESTful server: %w", err)
 	}
 
-	g, ctx := errgroup.WithContext(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	g, ctx := errgroup.WithContext(ctx)
+	defer cancel()
 
 	g.Go(func() error {
 		context.AfterFunc(ctx, func() {
@@ -89,15 +90,9 @@ func (c *InitContext) Start() error {
 		return util.WaitBindPID(ctx, c.Logger, c.BindPID)
 	})
 
-	wsl.CheckEnv(&c.InitOpt)
+	wsl.Check(ctx, &c.InitOpt)
 
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("app unexpectedly exit, because the context is done, ctx err: %v", context.Cause(ctx))
-	case <-channel.ReceiveWSLEnvReady():
-		wsl.CheckBIOS(&c.InitOpt)
-		return nil
-	}
+	return nil
 }
 
 func (c *InitContext) moveConsoleToParent() {

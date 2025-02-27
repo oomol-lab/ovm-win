@@ -1,28 +1,28 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package channel
 
 type _context struct {
-	wslEnvReady chan bool
+	wslUpdated chan struct{}
 }
 
 var c *_context
 
 func init() {
 	c = &_context{
-		wslEnvReady: make(chan bool, 1),
+		wslUpdated: make(chan struct{}, 1),
 	}
 }
 
 func Close() {
-	close(c.wslEnvReady)
+	close(c.wslUpdated)
 }
 
-func NotifyWSLEnvReady() {
-	c.wslEnvReady <- true
+func NotifyWSLUpdated() {
+	c.wslUpdated <- struct{}{}
 }
 
-func ReceiveWSLEnvReady() <-chan bool {
-	return c.wslEnvReady
+func ReceiveWSLUpdated() <-chan struct{} {
+	return c.wslUpdated
 }
