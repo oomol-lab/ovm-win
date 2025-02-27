@@ -119,5 +119,5 @@ func (r *routerInit) updateWSL(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	channel.NotifyWSLEnvReady()
+	channel.NotifyWSLUpdated()
 }

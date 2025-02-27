@@ -4,11 +4,11 @@
 package wsl
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/hashicorp/go-version"
 	"github.com/oomol-lab/ovm-win/pkg/channel"
@@ -19,53 +19,82 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/winapi/sys"
 )
 
-var (
-	_onceIsFeatureEnabled sync.Once
-	_isFeatureEnabled     bool
-)
-
-func CheckEnv(opt *types.InitOpt) {
-	log := opt.Logger
-
-	if isEnabled := isFeatureEnabled(log); !isEnabled {
-		log.Info("WSL2 feature is not enabled")
-		event.NotifyInit(event.NeedEnableFeature)
-		opt.CanEnableFeature = true
+func Check(ctx context.Context, opt *types.InitOpt) {
+	if ok := checkFeature(ctx, opt); !ok {
 		return
 	}
 
-	log.Info("WSL2 feature is already enabled")
-
-	if shouldUpdateWSL(log) {
-		event.NotifyInit(event.NeedUpdateWSL)
-		opt.CanUpdateWSL = true
+	if ok := checkVersion(ctx, opt); !ok {
 		return
 	}
 
-	log.Info("WSL2 is up to date")
-	channel.NotifyWSLEnvReady()
+	if ok := checkBIOS(ctx, opt); !ok {
+		return
+	}
+
 	return
 }
 
-func CheckBIOS(opt *types.InitOpt) {
+func checkFeature(ctx context.Context, opt *types.InitOpt) bool {
+	log := opt.Logger
+
+	if isEnabled := isFeatureEnabled(log); isEnabled {
+		log.Info("WSL2 feature is already enabled")
+		return true
+	}
+
+	log.Info("WSL2 feature is not enabled")
+	event.NotifyInit(event.NeedEnableFeature)
+	opt.CanEnableFeature = true
+
+	<-ctx.Done()
+	return false
+}
+
+func checkVersion(ctx context.Context, opt *types.InitOpt) bool {
+	log := opt.Logger
+
+	if !shouldUpdateWSL(log) {
+		log.Info("WSL2 is up to date")
+		return true
+	}
+
+	event.NotifyInit(event.NeedUpdateWSL)
+	opt.CanUpdateWSL = true
+
+	select {
+	case <-ctx.Done():
+		log.Warnf("cancel waiting wsl update, ctx is done: %v", context.Cause(ctx))
+		return false
+	case <-channel.ReceiveWSLUpdated():
+		log.Info("WSL updated")
+		return true
+	}
+}
+
+func checkBIOS(ctx context.Context, opt *types.InitOpt) bool {
 	log := opt.Logger
 
 	if list, err := getAllWSLDistros(log, false); err == nil && len(list) != 0 {
-		return
+		log.Info("Exist WSL distros, BIOS may support virtualization")
+		return true
 	}
 
 	if isSupportedVirtualization(log) {
-		return
+		log.Info("Virtualization is supported")
+		return true
 	}
 
 	if isWillReportExpectedErrorInMountVHDX(log, opt) {
-		return
+		log.Info("Expected error in mount vhdx, BIOS may support virtualization")
+		return true
 	}
 
 	log.Info("Virtualization is not supported")
 	event.NotifyInit(event.NotSupportVirtualization)
 
-	return
+	<-ctx.Done()
+	return false
 }
 
 func isSupportedVirtualization(log *logger.Context) bool {
@@ -147,63 +176,55 @@ func isInstalled(log *logger.Context) bool {
 
 // isFeatureEnabled Check `Microsoft-Windows-Subsystem-Linux` and `VirtualMachinePlatform` are enabled
 func isFeatureEnabled(log *logger.Context) bool {
-	_onceIsFeatureEnabled.Do(func() {
-		// we cannot use the following methods for checking because these commands require administrative privileges.
-		// 	1.Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
-		// 	2.Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
+	// we cannot use the following methods for checking because these commands require administrative privileges.
+	// 	1.Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+	// 	2.Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
 
-		// In the old version of WSL, we could check if the feature was enabled by calling the --set-default-version command,
-		// and if there was an error, it indicated that the feature was not enabled. However
-		// in the new version, this behavior has changed;even if the feature is not enabled, there will be no error.
-		//
-		// This command will also have a side effect: it will change the default version of WSL to 2. However, this side effect is expected.
-		if util.Silent(log, Find(), "--set-default-version", "2") != nil {
-			_isFeatureEnabled = false
-			return
+	// In the old version of WSL, we could check if the feature was enabled by calling the --set-default-version command,
+	// and if there was an error, it indicated that the feature was not enabled. However
+	// in the new version, this behavior has changed;even if the feature is not enabled, there will be no error.
+	//
+	// This command will also have a side effect: it will change the default version of WSL to 2. However, this side effect is expected.
+	if util.Silent(log, Find(), "--set-default-version", "2") != nil {
+		return false
+	}
+
+	{
+
+		out, err := wslExec(log, "--status")
+		if err != nil {
+			// --status The failure may be caused by issues such as the kernel file not existing,
+			// and we should not assume that this error indicates that the feature is not enabled.
+			return true
 		}
 
-		{
+		log.Infof("WSL --status result: %s", out)
 
-			out, err := wslExec(log, "--status")
-			if err != nil {
-				// --status The failure may be caused by issues such as the kernel file not existing,
-				// and we should not assume that this error indicates that the feature is not enabled.
-				_isFeatureEnabled = true
-				return
-			}
+		lines := strings.Split(string(out), "\n")
 
-			log.Infof("WSL --status result: %s", out)
+		// Delete the line below to avoid inaccuracies in the results.
+		// Default Distribution: Ubuntu
+		// Default Version: 2
+		hasUselessHeader := len(lines) >= 2 && strings.Contains(lines[0], ":") && strings.Contains(lines[1], ":")
+		if hasUselessHeader {
+			log.Info("Exist useless header")
+			lines = lines[2:]
+		}
+		lineStr := strings.Join(lines, "\n")
 
-			lines := strings.Split(string(out), "\n")
+		log.Infof("Cleaned wsl --status line: %s", lineStr)
 
-			// Delete the line below to avoid inaccuracies in the results.
-			// Default Distribution: Ubuntu
-			// Default Version: 2
-			hasUselessHeader := len(lines) >= 2 && strings.Contains(lines[0], ":") && strings.Contains(lines[1], ":")
-			if hasUselessHeader {
-				log.Info("Exist useless header")
-				lines = lines[2:]
-			}
-			lineStr := strings.Join(lines, "\n")
+		keywords := []string{"Windows Subsystem for Linux", "BIOS", "wsl.exe", "enablevirtualization", "WSL1"}
 
-			log.Infof("Cleaned wsl --status line: %s", lineStr)
-
-			keywords := []string{"Windows Subsystem for Linux", "BIOS", "wsl.exe", "enablevirtualization", "WSL1"}
-
-			for _, key := range keywords {
-				if strings.Contains(lineStr, key) {
-					log.Warnf("Find keyword: %s in status result", key)
-					_isFeatureEnabled = false
-					return
-				}
+		for _, key := range keywords {
+			if strings.Contains(lineStr, key) {
+				log.Warnf("Find keyword: %s in status result", key)
+				return false
 			}
 		}
+	}
 
-		_isFeatureEnabled = true
-		return
-	})
-
-	return _isFeatureEnabled
+	return true
 }
 
 func wslVersion(log *logger.Context) (string, error) {
