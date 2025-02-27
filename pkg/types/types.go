@@ -19,6 +19,7 @@ type InitOpt struct {
 	CanReboot         bool
 	CanEnableFeature  bool
 	CanUpdateWSL      bool
+	CanFixWSLConfig   bool
 
 	BasicOpt
 }
