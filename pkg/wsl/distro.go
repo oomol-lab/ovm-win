@@ -25,6 +25,14 @@ import (
 var ErrDistroNotExist = errors.New("distro does not exist")
 var ErrDistroNotRunning = errors.New("distro is not running")
 
+func Shutdown(log *logger.Context) error {
+	if _, err := wslExec(log, "--shutdown"); err != nil {
+		return fmt.Errorf("could not shutdown WSL: %w", err)
+	}
+
+	return nil
+}
+
 func Terminate(log *logger.Context, distroName string) error {
 	if _, err := wslExec(log, "--terminate", distroName); err != nil {
 		return fmt.Errorf("could not terminate distro %q: %w", distroName, err)

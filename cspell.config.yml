@@ -46,6 +46,10 @@ words:
 
   # pkg/wsl
   - enablevirtualization
+
+  # pkg/util
+  - wslconfig
+
 dictionaries:
   - companies
   - softwareTerms

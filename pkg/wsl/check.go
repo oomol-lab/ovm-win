@@ -32,6 +32,11 @@ func Check(ctx context.Context, opt *types.InitOpt) {
 		return
 	}
 
+	// Must be placed last, as this could potentially cause WSL to shut down
+	if ok := checkWSLConfig(ctx, opt); !ok {
+		return
+	}
+
 	return
 }
 
@@ -95,6 +100,67 @@ func checkBIOS(ctx context.Context, opt *types.InitOpt) bool {
 
 	<-ctx.Done()
 	return false
+}
+
+const (
+	FIX_WSLCONFIG_AUTO = iota
+	FIX_WSLCONFIG_OPEN
+	FIX_WSLCONFIG_SKIP
+)
+
+const (
+	skipWslconfigCheckFileSuffix = "_check-wslconfig.skip"
+)
+
+func checkWSLConfig(ctx context.Context, opt *types.InitOpt) bool {
+	log := opt.Logger
+
+	if configPath, ok := util.ConfigPath(); ok {
+		skipPath := filepath.Join(configPath, fmt.Sprintf("%s%s", opt.Name, skipWslconfigCheckFileSuffix))
+
+		if ok && util.Exists(skipPath) == nil {
+			log.Info("WSL config check skipped")
+			return true
+		}
+	} else {
+		log.Warn("Failed to get OVM config path")
+	}
+
+	if exist := NewConfig(log).ExistIncompatible(); !exist {
+		log.Info("WSL2 config is compatible")
+		return true
+	}
+
+	event.NotifyInit(event.WSLConfigMaybeIncompatible)
+	opt.CanFixWSLConfig = true
+
+	select {
+	case <-ctx.Done():
+		log.Warnf("cancel waiting fix wsl config, ctx is done: %v", context.Cause(ctx))
+		return false
+	case flag := <-channel.ReceiveWSLConfigUpdated():
+		log.Info("WSL config updated")
+
+		if flag == FIX_WSLCONFIG_OPEN {
+			<-channel.ReceiveWSLShutdown()
+		}
+
+		return true
+	}
+}
+
+func SkipConfigCheck(opt *types.InitOpt) {
+	configPath, ok := util.ConfigPath()
+	if !ok {
+		opt.Logger.Warn("Failed to get OVM config path")
+		return
+	}
+
+	skipPath := filepath.Join(configPath, fmt.Sprintf("%s%s", opt.Name, skipWslconfigCheckFileSuffix))
+
+	if err := util.Touch(skipPath); err != nil {
+		opt.Logger.Warnf("Failed to touch skip file: %v", err)
+	}
 }
 
 func isSupportedVirtualization(log *logger.Context) bool {

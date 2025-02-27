@@ -35,13 +35,14 @@ const (
 	EnableFeatureSuccess     nameInit = "EnableFeatureSuccess"
 	NeedReboot               nameInit = "NeedReboot"
 
-	NeedUpdateWSL    nameInit = "NeedUpdateWSL"
-	UpdatingWSL      nameInit = "UpdatingWSL"
-	UpdateWSLFailed  nameInit = "UpdateWSLFailed"
-	UpdateWSLSuccess nameInit = "UpdateWSLSuccess"
-	InitExit         nameInit = "Exit"
-	InitSuccess      nameInit = "Success"
-	InitError        nameInit = "Error"
+	WSLConfigMaybeIncompatible nameInit = "WSLConfigMaybeIncompatible"
+	NeedUpdateWSL              nameInit = "NeedUpdateWSL"
+	UpdatingWSL                nameInit = "UpdatingWSL"
+	UpdateWSLFailed            nameInit = "UpdateWSLFailed"
+	UpdateWSLSuccess           nameInit = "UpdateWSLSuccess"
+	InitExit                   nameInit = "Exit"
+	InitSuccess                nameInit = "Success"
+	InitError                  nameInit = "Error"
 )
 
 type nameRun string

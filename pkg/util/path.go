@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package util
@@ -56,6 +56,21 @@ func CachePath() (string, bool) {
 	return "", false
 }
 
+func ConfigPath() (string, bool) {
+	p, err := os.UserHomeDir()
+	if err != nil {
+		return "", false
+	}
+
+	p = filepath.Join(p, ".config", "ovm")
+
+	if err := os.MkdirAll(p, 0755); err != nil {
+		return "", false
+	}
+
+	return p, true
+}
+
 // HostPathToWSL host path to wsl path
 // e.g. C:\Users\bh\test.txt -> /mnt/c/Users/bh/test.txt
 func HostPathToWSL(p string) string {
@@ -63,4 +78,18 @@ func HostPathToWSL(p string) string {
 	target := p[2:]
 
 	return path.Join("/", "mnt", drive, strings.Replace(target, "\\", "/", -1))
+}
+
+func NotepadPath() (string, bool) {
+	system32, ok := System32Root()
+	if !ok {
+		return "", false
+	}
+
+	p := filepath.Join(system32, "notepad.exe")
+	if Exists(p) != nil {
+		return "", false
+	}
+
+	return p, true
 }
