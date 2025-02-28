@@ -20,11 +20,11 @@ import (
 )
 
 func Check(ctx context.Context, opt *types.InitOpt) {
-	if ok := checkFeature(ctx, opt); !ok {
+	if ok := checkVersion(ctx, opt); !ok {
 		return
 	}
 
-	if ok := checkVersion(ctx, opt); !ok {
+	if ok := checkFeature(ctx, opt); !ok {
 		return
 	}
 
