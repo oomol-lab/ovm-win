@@ -80,4 +80,4 @@ jobs:
             --endpoint-url ${{ secrets.R2_OOMOL_STATIC_S3_ENDPOINT }} \
             ./out \
             s3://oomol-static/ovm-resources/ovm-win/$RELEASE_VERSION \
-            --recursive --exclude "*" --include "*.exe"
+            --recursive --exclude "*" --include "*.exe" --checksum-algorithm CRC32
