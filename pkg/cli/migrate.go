@@ -65,15 +65,16 @@ func (m *MigrateContext) Start() error {
 		}
 	}
 
-	// move data
+	// copy data
+	oldDataPath := filepath.Join(m.OldImageDir, "data.vhdx")
 	{
-		dataPath := filepath.Join(m.OldImageDir, "data.vhdx")
-
-		if err := wsl.UmountVHDX(m.Logger, dataPath); err != nil {
+		// After unmounting, there is no need to execute mount again.
+		// The mount operation will be done automatically during the next startup.
+		if err := wsl.UmountVHDX(m.Logger, oldDataPath); err != nil {
 			return fmt.Errorf("failed to umount data: %w", err)
 		}
 
-		if err := sys.CopyFile(dataPath, filepath.Join(m.NewImageDir, "data.vhdx"), true); err != nil {
+		if err := sys.CopyFile(oldDataPath, filepath.Join(m.NewImageDir, "data.vhdx"), true); err != nil {
 			return fmt.Errorf("failed to copy data: %w", err)
 		}
 
@@ -104,18 +105,22 @@ func (m *MigrateContext) Start() error {
 		log.Info("distro is moved")
 	}
 
+	// copy versions.json
+	oldVersions := filepath.Join(m.OldImageDir, "versions.json")
 	{
-		versions := filepath.Join(m.OldImageDir, "versions.json")
-
-		if err := sys.CopyFile(versions, filepath.Join(m.NewImageDir, "versions.json"), true); err != nil {
+		if err := sys.CopyFile(oldVersions, filepath.Join(m.NewImageDir, "versions.json"), true); err != nil {
 			return fmt.Errorf("failed to copy versions: %w", err)
 		}
 
 		log.Info("versions is copied to new dir")
 	}
 
-	if err := os.RemoveAll(m.OldImageDir); err != nil {
-		log.Warnf("failed to remove old image dir: %v", err)
+	if err := os.RemoveAll(oldDataPath); err != nil {
+		log.Warnf("failed to remove old data.vhdx: %v", err)
+	}
+
+	if err := os.RemoveAll(oldVersions); err != nil {
+		log.Warnf("failed to remove old versions.json: %v", err)
 	}
 
 	return nil
