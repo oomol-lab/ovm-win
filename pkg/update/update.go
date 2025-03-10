@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package update
@@ -49,12 +49,12 @@ func (c *Context) needUpdate() (result []types.VersionKey) {
 	jsonVersion := &types.Version{}
 	data, err := os.ReadFile(c.jsonPath)
 	if err != nil {
-		log.Warnf("failed to read versions.json file: %v", err)
+		log.Warnf("Failed to read versions.json file: %v", err)
 		return []types.VersionKey{types.VersionRootFS, types.VersionData}
 	}
 
 	if err := json.Unmarshal(data, jsonVersion); err != nil {
-		log.Warnf("failed to unmarshal versions.json file, json content: %s, %v", data, err)
+		log.Warnf("Failed to unmarshal versions.json file, json content: %s, %v", data, err)
 		_ = os.RemoveAll(c.jsonPath)
 		return []types.VersionKey{types.VersionRootFS, types.VersionData}
 	}
@@ -62,9 +62,9 @@ func (c *Context) needUpdate() (result []types.VersionKey) {
 	rootfsPath := filepath.Join(c.ImageDir, "ext4.vhdx")
 	if jsonVersion.RootFS != c.RootFS || util.Exists(rootfsPath) != nil {
 		if jsonVersion.RootFS != c.RootFS {
-			log.Infof("need update rootfs, because version changed: %s -> %s", jsonVersion.RootFS, c.RootFS)
+			log.Infof("Need update rootfs, because version changed: %s -> %s", jsonVersion.RootFS, c.RootFS)
 		} else {
-			log.Infof("need update rootfs, because rootfs not exists: %s", rootfsPath)
+			log.Infof("Need update rootfs, because rootfs not exists: %s", rootfsPath)
 		}
 
 		result = append(result, types.VersionRootFS)
@@ -73,9 +73,9 @@ func (c *Context) needUpdate() (result []types.VersionKey) {
 	dataPath := filepath.Join(c.ImageDir, "data.vhdx")
 	if jsonVersion.Data != c.Data || util.Exists(dataPath) != nil {
 		if jsonVersion.Data != c.Data {
-			log.Infof("need update data, because version changed: %s -> %s", jsonVersion.Data, c.Data)
+			log.Infof("Need update data, because version changed: %s -> %s", jsonVersion.Data, c.Data)
 		} else {
-			log.Infof("need update data, because data not exists: %s", dataPath)
+			log.Infof("Need update data, because data not exists: %s", dataPath)
 		}
 		result = append(result, types.VersionData)
 	}
@@ -87,7 +87,7 @@ func (c *Context) CheckAndReplace() error {
 	log := c.Logger
 	list := c.needUpdate()
 	if len(list) == 0 {
-		log.Info("no need to update versions")
+		log.Info("No need to update versions")
 		return nil
 	}
 
@@ -98,7 +98,7 @@ func (c *Context) CheckAndReplace() error {
 			return fmt.Errorf("failed to update data: %w", err)
 		}
 		event.NotifyRun(event.UpdateDataSuccess)
-		log.Info("update data success")
+		log.Info("Update data success")
 	}
 
 	if slices.Contains(list, types.VersionRootFS) {
@@ -108,7 +108,7 @@ func (c *Context) CheckAndReplace() error {
 			return fmt.Errorf("failed to update rootfs: %w", err)
 		}
 		event.NotifyRun(event.UpdateRootFSSuccess)
-		log.Info("update rootfs success")
+		log.Info("Update rootfs success")
 	}
 
 	if err := c.save(); err != nil {

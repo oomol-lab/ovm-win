@@ -107,7 +107,7 @@ func SafeSyncDisk(log *logger.Context, distroName string) error {
 func MountVHDX(log *logger.Context, path string) error {
 	if _, err := wslExec(log, "--mount", "--bare", "--vhd", path); err != nil {
 		if strings.Contains(err.Error(), "MountVhd/WSL_E_USER_VHD_ALREADY_ATTACHED") {
-			log.Infof("vhdx already mounted: %s", path)
+			log.Infof("VHDX already mounted: %s", path)
 			return nil
 		}
 		return fmt.Errorf("wsl mount %s failed: %w", path, err)
@@ -123,7 +123,7 @@ func UmountVHDX(log *logger.Context, path string) error {
 
 	if _, err := wslExec(log, "--unmount", path); err != nil {
 		if strings.Contains(err.Error(), "DetachDisk/ERROR_FILE_NOT_FOUND") {
-			log.Infof("vhdx already unmounted: %s", path)
+			log.Infof("VHDX already unmounted: %s", path)
 			return nil
 		}
 		return fmt.Errorf("wsl umount %s failed: %w", path, err)

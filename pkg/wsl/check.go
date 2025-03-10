@@ -69,7 +69,7 @@ func checkVersion(ctx context.Context, opt *types.InitOpt) bool {
 
 	select {
 	case <-ctx.Done():
-		log.Warnf("cancel waiting wsl update, ctx is done: %v", context.Cause(ctx))
+		log.Warnf("Cancel waiting wsl update, ctx is done: %v", context.Cause(ctx))
 		return false
 	case <-channel.ReceiveWSLUpdated():
 		log.Info("WSL updated")
