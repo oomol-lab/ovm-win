@@ -24,6 +24,7 @@ import (
 
 var ErrDistroNotExist = errors.New("distro does not exist")
 var ErrDistroNotRunning = errors.New("distro is not running")
+var ErrSharingViolation = errors.New("sharing violation")
 
 func Shutdown(log *logger.Context) error {
 	if _, err := wslExec(log, "--shutdown"); err != nil {
@@ -126,6 +127,18 @@ func UmountVHDX(log *logger.Context, path string) error {
 			return nil
 		}
 		return fmt.Errorf("wsl umount %s failed: %w", path, err)
+	}
+
+	return nil
+}
+
+func MoveDistro(log *logger.Context, distroName, newPath string) error {
+	if _, err := wslExec(log, "--manage", distroName, "--move", newPath); err != nil {
+		if strings.Contains(err.Error(), "MoveDistro/ERROR_SHARING_VIOLATION") {
+			return ErrSharingViolation
+		}
+
+		return fmt.Errorf("wsl move %s failed: %w", newPath, err)
 	}
 
 	return nil

@@ -5,11 +5,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
 	ocli "github.com/oomol-lab/ovm-win/pkg/cli"
 	"github.com/oomol-lab/ovm-win/pkg/ipc/event"
+	"github.com/oomol-lab/ovm-win/pkg/logger"
 	"github.com/oomol-lab/ovm-win/pkg/types"
 	"github.com/oomol-lab/ovm-win/pkg/util"
 	"github.com/urfave/cli/v3"
@@ -23,11 +25,15 @@ var (
 	versions       string
 	eventNpipeName string
 	bindPID        int64
+
+	oldImageDir string
+	newImageDir string
 )
 
 var (
-	initCtx *ocli.InitContext
-	runCtx  *ocli.RunContext
+	initCtx    *ocli.InitContext
+	runCtx     *ocli.RunContext
+	migrateCtx *ocli.MigrateContext
 )
 
 func cmd() error {
@@ -38,6 +44,10 @@ func cmd() error {
 				Name:  "init",
 				Usage: "Check the System Requirements",
 				Before: func(ctx context.Context, command *cli.Command) error {
+					if eventNpipeName == "" {
+						return errors.New("--event-npipe-name not specified")
+					}
+
 					initCtx = ocli.InitCmd(&types.InitOpt{
 						IsElevatedProcess: false,
 						CanEnableFeature:  false,
@@ -66,6 +76,10 @@ func cmd() error {
 				Name:  "run",
 				Usage: "Run the Virtual Machine",
 				Before: func(ctx context.Context, command *cli.Command) error {
+					if eventNpipeName == "" {
+						return errors.New("--event-npipe-name not specified")
+					}
+
 					runCtx = ocli.RunCmd(&types.RunOpt{
 						DistroName: name,
 						ImageDir:   imageDir,
@@ -107,6 +121,44 @@ func cmd() error {
 					},
 				},
 			},
+			{
+				Name:  "migrate",
+				Usage: "Migrate the ovm image to the specified directory",
+				Before: func(ctx context.Context, command *cli.Command) error {
+					migrateCtx = ocli.MigrateCmd(&types.MigrateOpt{
+						OldImageDir: oldImageDir,
+						NewImageDir: newImageDir,
+						BasicOpt: types.BasicOpt{
+							Name:           name,
+							LogPath:        logPath,
+							EventNpipeName: "",
+							BindPID:        0,
+						},
+					})
+					return migrateCtx.Setup()
+				},
+				Action: func(ctx context.Context, command *cli.Command) error {
+					if err := migrateCtx.Start(); err != nil {
+						return fmt.Errorf("failed to migrate: %w", err)
+					}
+
+					return nil
+				},
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "old-image-dir",
+						Usage:       "Old image directory",
+						Required:    true,
+						Destination: &oldImageDir,
+					},
+					&cli.StringFlag{
+						Name:        "new-image-dir",
+						Usage:       "new image directory",
+						Required:    true,
+						Destination: &newImageDir,
+					},
+				},
+			},
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -126,7 +178,7 @@ func cmd() error {
 			&cli.StringFlag{
 				Name:        "event-npipe-name",
 				Usage:       "HTTP server established in the named pipe (such as the foo in //./pipe/foo) must implement the GET /notify?event=&message= route",
-				Required:    true,
+				Required:    false,
 				Persistent:  true,
 				Destination: &eventNpipeName,
 			},
@@ -144,15 +196,24 @@ func cmd() error {
 }
 
 func main() {
+	var log *logger.Context
 	err := cmd()
-	if initCtx != nil {
+	switch {
+	case initCtx != nil:
+		log = initCtx.Logger
 		event.NotifyInit(event.InitExit)
-	} else {
+	case runCtx != nil:
+		log = runCtx.Logger
 		event.NotifyRun(event.RunExit)
+	case migrateCtx != nil:
+		log = migrateCtx.Logger
 	}
 
 	if err != nil {
 		fmt.Println(err)
+		if log != nil {
+			_ = log.Error(err.Error())
+		}
 		util.Exit(1)
 	} else {
 		util.Exit(0)
