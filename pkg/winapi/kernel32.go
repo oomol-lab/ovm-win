@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package winapi
@@ -29,4 +29,12 @@ func AttachConsole(pid uintptr) error {
 func IsProcessorFeaturePresent(feature int) bool {
 	ret, _, _ := isProcessorFeaturePresent.Call(uintptr(feature))
 	return ret != 0
+}
+
+func ProcCopyFile(lpExistingFileName, lpNewFileName string, bFailIfExists uint32) error {
+	if ret, _, lastErr := procCopyFileW.Call(CStr(lpExistingFileName), CStr(lpNewFileName), uintptr(bFailIfExists)); ret == 0 {
+		return lastErr
+	}
+
+	return nil
 }

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package winapi
@@ -19,6 +19,7 @@ var (
 	freeConsole               *windows.LazyProc
 	attachConsole             *windows.LazyProc
 	isProcessorFeaturePresent *windows.LazyProc
+	procCopyFileW             *windows.LazyProc
 	wNetGetUniversalName      *windows.LazyProc
 )
 
@@ -33,6 +34,7 @@ func init() {
 	freeConsole = kernel32.NewProc("FreeConsole")
 	attachConsole = kernel32.NewProc("AttachConsole")
 	isProcessorFeaturePresent = kernel32.NewProc("IsProcessorFeaturePresent")
+	procCopyFileW = kernel32.NewProc("CopyFileW")
 	wNetGetUniversalName = mpr.NewProc("WNetGetUniversalNameW")
 }
 

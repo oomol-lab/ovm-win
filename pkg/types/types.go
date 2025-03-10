@@ -34,3 +34,12 @@ type RunOpt struct {
 
 	BasicOpt
 }
+
+type MigrateOpt struct {
+	DistroName string
+
+	OldImageDir string
+	NewImageDir string
+
+	BasicOpt
+}
