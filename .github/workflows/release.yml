@@ -57,12 +57,21 @@ jobs:
           signtool.exe sign /sha1 ${{ secrets.SM_CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 ./out/ovm-amd64.exe
           signtool.exe verify /v /pa ./out/ovm-amd64.exe
 
+      - name: Gen Release Notes
+        run: |
+          $sha256 = (Get-FileHash -Path ./out/ovm-amd64.exe -Algorithm SHA256).Hash.ToLower()
+
+          Set-Content -Path ./release_notes.md -Value '```'
+          Add-Content -Path ./release_notes.md -Value "$sha256  ovm-amd64.exe"
+          Add-Content -Path ./release_notes.md -Value '```'
+
       - name: Release
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
         with:
           files: |
             out/*
           generate_release_notes: true
+          body_path: ./release_notes.md
           draft: false
           prerelease: false
           fail_on_unmatched_files: true
