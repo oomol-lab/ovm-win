@@ -49,19 +49,21 @@ func (m *MigrateContext) Setup() error {
 func (m *MigrateContext) Start() error {
 	log := m.Logger
 
+	log.Infof("Ready to migrate, from %s to %s", m.OldImageDir, m.NewImageDir)
+
 	if err := wsl.SafeSyncDisk(log, m.DistroName); err != nil {
 		switch {
 		case errors.Is(err, wsl.ErrDistroNotExist):
-			log.Info("distro is not exist")
+			log.Info("Distro is not exist")
 			break
 		case errors.Is(err, wsl.ErrDistroNotRunning):
-			log.Info("distro is not running")
+			log.Info("Distro is not running")
 			break
 		default:
 			if err := wsl.Terminate(log, m.DistroName); err != nil {
 				return fmt.Errorf("cannot terminate distro %s: %w", m.DistroName, err)
 			}
-			log.Info("distro is terminated")
+			log.Info("Distro is terminated")
 		}
 	}
 
@@ -78,7 +80,7 @@ func (m *MigrateContext) Start() error {
 			return fmt.Errorf("failed to copy data: %w", err)
 		}
 
-		log.Info("data is copied to new dir")
+		log.Info("File data.vhdx is copied to new dir")
 	}
 
 	// move distro
@@ -102,7 +104,7 @@ func (m *MigrateContext) Start() error {
 			}
 		}
 
-		log.Info("distro is moved")
+		log.Info("Distro is moved")
 	}
 
 	// copy versions.json
@@ -112,16 +114,18 @@ func (m *MigrateContext) Start() error {
 			return fmt.Errorf("failed to copy versions: %w", err)
 		}
 
-		log.Info("versions is copied to new dir")
+		log.Info("File versions.json is copied to new dir")
 	}
 
 	if err := os.RemoveAll(oldDataPath); err != nil {
-		log.Warnf("failed to remove old data.vhdx: %v", err)
+		log.Warnf("Failed to remove old data.vhdx: %v", err)
 	}
 
 	if err := os.RemoveAll(oldVersions); err != nil {
-		log.Warnf("failed to remove old versions.json: %v", err)
+		log.Warnf("Failed to remove old versions.json: %v", err)
 	}
+
+	log.Infof("Success to migrate, from %s to %s", m.OldImageDir, m.NewImageDir)
 
 	return nil
 }

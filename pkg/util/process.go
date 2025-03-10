@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package util
@@ -14,17 +14,17 @@ import (
 
 func WaitBindPID(ctx context.Context, log *logger.Context, pid int) error {
 	if pid == 0 {
-		log.Info("pid is 0, no need to wait")
+		log.Info("PID is 0, no need to wait")
 		<-ctx.Done()
 		return nil
 	}
 
-	log.Infof("wait bind pid: %d exit", pid)
+	log.Infof("Wait bind pid: %d exit", pid)
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Info("cancel wait bind pid, because context done")
+			log.Info("Cancel wait bind pid, because context done")
 			return nil
 		default:
 			exists, err := process.PidExistsWithContext(ctx, int32(pid))

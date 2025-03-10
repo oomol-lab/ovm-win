@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 OOMOL, Inc. <https://www.oomol.com>
+// SPDX-FileCopyrightText: 2024-2025 OOMOL, Inc. <https://www.oomol.com>
 // SPDX-License-Identifier: MPL-2.0
 
 package update
@@ -22,7 +22,7 @@ func (c *Context) updateRootfs() error {
 		err := wsl.SafeSyncDisk(log, c.DistroName)
 		switch {
 		case errors.Is(err, wsl.ErrDistroNotRunning), err == nil:
-			log.Infof("removing old distro: %s", c.DistroName)
+			log.Infof("Removing old distro: %s", c.DistroName)
 			if err := wsl.Unregister(log, c.DistroName); err != nil {
 				return fmt.Errorf("cannot remove old distro %s: %w", c.DistroName, err)
 			}
@@ -33,7 +33,7 @@ func (c *Context) updateRootfs() error {
 		}
 	}
 
-	log.Infof("importing distro %s from %s", c.DistroName, c.RootFSPath)
+	log.Infof("Importing distro %s from %s", c.DistroName, c.RootFSPath)
 	if err := wsl.ImportDistro(log, c.DistroName, c.ImageDir, c.RootFSPath); err != nil {
 		return fmt.Errorf("failed to import distro: %w", err)
 	}
@@ -49,7 +49,7 @@ func (c *Context) updateData() error {
 		err := wsl.SafeSyncDisk(log, c.DistroName)
 		switch {
 		case err == nil:
-			log.Infof("shutting down distro: %s", c.DistroName)
+			log.Infof("Shutting down distro: %s", c.DistroName)
 			if err := wsl.Terminate(log, c.DistroName); err != nil {
 				return fmt.Errorf("cannot terminate distro %s: %w", c.DistroName, err)
 			}
@@ -62,18 +62,18 @@ func (c *Context) updateData() error {
 
 	dataPath := filepath.Join(c.ImageDir, "data.vhdx")
 
-	log.Infof("umounting data: %s", dataPath)
+	log.Infof("Umounting data: %s", dataPath)
 	if err := wsl.UmountVHDX(log, dataPath); err != nil {
 		return fmt.Errorf("failed to unmount data: %w", err)
 	}
 
-	log.Infof("removing old data: %s", dataPath)
+	log.Infof("Removing old data: %s", dataPath)
 	if err := os.RemoveAll(dataPath); err != nil {
 		return fmt.Errorf("failed to remove old data: %w", err)
 	}
 
 	dataSize := util.DataSize(c.Name + c.ImageDir)
-	log.Infof("creating new data: %s, size: %d", dataPath, dataSize)
+	log.Infof("Creating new data: %s, size: %d", dataPath, dataSize)
 	if err := vhdx.Create(dataPath, dataSize); err != nil {
 		return fmt.Errorf("failed to create new data: %w", err)
 	}
