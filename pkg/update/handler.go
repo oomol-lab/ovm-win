@@ -72,7 +72,7 @@ func (c *Context) updateData() error {
 		return fmt.Errorf("failed to remove old data: %w", err)
 	}
 
-	dataSize := util.DataSize(c.Name + c.ImageDir)
+	dataSize := util.DataSize(c.Name)
 	log.Infof("Creating new data: %s, size: %d", dataPath, dataSize)
 	if err := vhdx.Create(dataPath, dataSize); err != nil {
 		return fmt.Errorf("failed to create new data: %w", err)

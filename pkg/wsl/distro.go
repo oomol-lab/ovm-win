@@ -211,7 +211,7 @@ func launchOVMD(ctx context.Context, opt *types.RunOpt) error {
 		return fmt.Errorf("could not create vm logger: %w", err)
 	}
 
-	dataSector := util.DataSize(opt.Name+opt.ImageDir) / 512
+	dataSector := util.DataSize(opt.Name) / 512
 	// See: https://github.com/oomol-lab/ovm-builder/blob/main/scripts/ovmd
 	cmd := util.SilentCmdContext(ctx, Find(),
 		"-d", opt.DistroName,
