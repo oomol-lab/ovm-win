@@ -137,6 +137,9 @@ func MoveDistro(log *logger.Context, distroName, newPath string) error {
 		if strings.Contains(err.Error(), "MoveDistro/ERROR_SHARING_VIOLATION") {
 			return ErrSharingViolation
 		}
+		if strings.Contains(err.Error(), "MoveDistro/WSL_E_DISTRO_NOT_STOPPED") {
+			return ErrSharingViolation
+		}
 
 		return fmt.Errorf("wsl move %s failed: %w", newPath, err)
 	}
