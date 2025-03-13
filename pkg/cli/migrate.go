@@ -52,20 +52,27 @@ func (m *MigrateContext) Start() error {
 
 	log.Infof("Ready to migrate, from %s to %s", m.OldImageDir, m.NewImageDir)
 
-	if err := wsl.SafeSyncDisk(log, m.DistroName); err != nil {
-		switch {
-		case errors.Is(err, wsl.ErrDistroNotExist):
-			log.Info("Distro is not exist")
-			break
-		case errors.Is(err, wsl.ErrDistroNotRunning):
-			log.Info("Distro is not running")
-			break
-		default:
-			if err := wsl.Terminate(log, m.DistroName); err != nil {
-				return fmt.Errorf("cannot terminate distro %s: %w", m.DistroName, err)
-			}
-			log.Info("Distro is terminated")
+	err := wsl.SafeSyncDisk(log, m.DistroName)
+	switch {
+	case errors.Is(err, wsl.ErrDistroNotExist):
+		log.Info("Distro is not exist")
+		break
+	case errors.Is(err, wsl.ErrDistroNotRunning):
+		log.Info("Distro is not running")
+		break
+	default:
+		if err != nil {
+			log.Warnf("Failed to sync disk: %w", err)
 		}
+
+		if err := wsl.Terminate(log, m.DistroName); err != nil {
+			log.Warnf("Failed to terminate: %v", err)
+
+			if err := wsl.Shutdown(log); err != nil {
+				return fmt.Errorf("failed to shutdown wsl: %w", err)
+			}
+		}
+		log.Info("Distro is terminated")
 	}
 
 	// copy data
