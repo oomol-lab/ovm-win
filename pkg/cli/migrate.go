@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -85,8 +86,9 @@ func (m *MigrateContext) Start() error {
 
 	// copy versions.json
 	oldVersions := filepath.Join(m.OldImageDir, "versions.json")
+	newVersions := filepath.Join(m.NewImageDir, "versions.json")
 	{
-		if err := sys.CopyFile(oldVersions, filepath.Join(m.NewImageDir, "versions.json"), true); err != nil {
+		if err := sys.CopyFile(oldVersions, newVersions, true); err != nil {
 			return fmt.Errorf("failed to copy versions: %w", err)
 		}
 
@@ -125,7 +127,44 @@ func (m *MigrateContext) Start() error {
 		log.Warnf("Failed to remove old versions.json: %v", err)
 	}
 
+	ResetData(log, newVersions)
+
 	log.Infof("Success to migrate, from %s to %s", m.OldImageDir, m.NewImageDir)
 
 	return nil
+}
+
+// TODO(BlackHole1): DELETE IT! REF: https://github.com/oomol-lab/ovm-win/issues/97
+
+func ResetData(log *logger.Context, versionJSONPath string) {
+	raw, err := os.ReadFile(versionJSONPath)
+	if err != nil {
+		log.Warnf("Failed to read versions.json: %v", err)
+		_ = os.RemoveAll(versionJSONPath)
+		return
+	}
+
+	content := &types.Version{}
+	if err := json.Unmarshal(raw, content); err != nil {
+		log.Warnf("Failed to unmarshal versions.json file, json content: %s, %v", raw, err)
+		_ = os.RemoveAll(versionJSONPath)
+		return
+	}
+
+	content.Data = "RESET"
+
+	newContent, err := json.Marshal(content)
+	if err != nil {
+		log.Warnf("Failed to marshal versions: %v", err)
+		_ = os.RemoveAll(versionJSONPath)
+		return
+	}
+
+	if err := os.WriteFile(versionJSONPath, newContent, 0644); err != nil {
+		log.Warnf("Failed to write versions to %s: %v", versionJSONPath, err)
+		_ = os.RemoveAll(versionJSONPath)
+		return
+	}
+
+	log.Info("Success to reset data")
 }
