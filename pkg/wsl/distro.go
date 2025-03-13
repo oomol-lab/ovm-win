@@ -211,13 +211,16 @@ func launchOVMD(ctx context.Context, opt *types.RunOpt) error {
 		return fmt.Errorf("could not create vm logger: %w", err)
 	}
 
+	// Backward compatibility
+	oldDataSector := util.DataSize(opt.Name+opt.ImageDir) / 512
 	dataSector := util.DataSize(opt.Name) / 512
-	// See: https://github.com/oomol-lab/ovm-builder/blob/main/scripts/ovmd
+
+	// See: https://github.com/oomol-lab/ovm-builder/blob/main/layers/wsl2_amd64/opt/ovmd
 	cmd := util.SilentCmdContext(ctx, Find(),
 		"-d", opt.DistroName,
 		"/opt/ovmd",
 		"-p", fmt.Sprintf("%d", opt.PodmanPort),
-		"-s", fmt.Sprintf("%d", dataSector),
+		"-s", fmt.Sprintf("%d,%d", dataSector, oldDataSector),
 	)
 	cmd.Env = []string{"WSL_UTF8=1"}
 
