@@ -83,6 +83,16 @@ func (m *MigrateContext) Start() error {
 		log.Info("File data.vhdx is copied to new dir")
 	}
 
+	// copy versions.json
+	oldVersions := filepath.Join(m.OldImageDir, "versions.json")
+	{
+		if err := sys.CopyFile(oldVersions, filepath.Join(m.NewImageDir, "versions.json"), true); err != nil {
+			return fmt.Errorf("failed to copy versions: %w", err)
+		}
+
+		log.Info("File versions.json is copied to new dir")
+	}
+
 	// move distro
 	{
 		needShutdown := false
@@ -105,16 +115,6 @@ func (m *MigrateContext) Start() error {
 		}
 
 		log.Info("Distro is moved")
-	}
-
-	// copy versions.json
-	oldVersions := filepath.Join(m.OldImageDir, "versions.json")
-	{
-		if err := sys.CopyFile(oldVersions, filepath.Join(m.NewImageDir, "versions.json"), true); err != nil {
-			return fmt.Errorf("failed to copy versions: %w", err)
-		}
-
-		log.Info("File versions.json is copied to new dir")
 	}
 
 	if err := os.RemoveAll(oldDataPath); err != nil {
