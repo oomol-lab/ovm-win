@@ -185,7 +185,7 @@ func isSupportedVirtualization(log *logger.Context) bool {
 func isWillReportExpectedErrorInMountVHDX(log *logger.Context, opt *types.InitOpt) bool {
 	tempVhdx := filepath.Join(os.TempDir(), fmt.Sprintf("ovm-win-%s-%s.vhdx", opt.Name, util.RandomString(5)))
 	defer func() {
-		os.RemoveAll(tempVhdx)
+		_ = os.RemoveAll(tempVhdx)
 	}()
 
 	_, err := wslExec(log, "--mount", "--bare", "--vhd", tempVhdx)
@@ -205,39 +205,22 @@ func isWillReportExpectedErrorInMountVHDX(log *logger.Context, opt *types.InitOp
 	return true
 }
 
-func existsKernel() bool {
-	// from `MSI` or `Windows Update`
-	if system32, ok := util.System32Root(); ok {
-		kernel := filepath.Join(system32, "lxss", "tools", "kernel")
-		if err := util.Exists(kernel); err == nil {
-			return true
-		}
+// isInstalled Checks if the WSL2 is installed.
+func isInstalled(log *logger.Context) bool {
+	result := ""
+	out, err := wslExec(log, "--help")
+	result += string(out) + "\n"
+	if err != nil {
+		result += err.Error()
 	}
 
-	// from `Microsoft Store` or `Github`
-	if programFiles, ok := util.ProgramFiles(); ok {
-		kernel := filepath.Join(programFiles, "WSL", "tools", "kernel")
-		if err := util.Exists(kernel); err == nil {
-			return true
-		}
+	log.Infof("WSL --help result: %s", result)
+
+	if strings.Contains(result, "--version, -v") {
+		return true
 	}
 
 	return false
-}
-
-// isInstalled Checks if the WSL2 is installed.
-func isInstalled(log *logger.Context) bool {
-	// If the kernel file does not exist,
-	// it means that the current system has only enabled the Features without running wsl --update.
-	if !existsKernel() {
-		return false
-	}
-
-	if err := util.Silent(log, Find(), "--status"); err != nil {
-		return false
-	}
-
-	return true
 }
 
 // isFeatureEnabled Check `Microsoft-Windows-Subsystem-Linux` and `VirtualMachinePlatform` are enabled
@@ -259,7 +242,13 @@ func isFeatureEnabled(log *logger.Context) bool {
 
 		out, err := wslExec(log, "--status")
 		if err != nil {
-			// --status The failure may be caused by issues such as the kernel file not existing,
+			// In Windows 10, if features are not enabled, the status will report an error and display information like `wsl.exe –install –no-distribution`
+			// In Windows 11, if features are not enabled, the status will not report an error.
+			if strings.Contains(err.Error(), "--install --no-distribution") {
+				return false
+			}
+
+			// The failure may be caused by issues such as the kernel file not existing,
 			// and we should not assume that this error indicates that the feature is not enabled.
 			return true
 		}
