@@ -310,7 +310,7 @@ func wslVersion(log *logger.Context) (string, error) {
 	return strings.TrimSpace(wslLine[offset+1:]), nil
 }
 
-const minVersion = "2.1.5"
+const minVersion = "2.3.24"
 
 func shouldUpdateWSL(log *logger.Context) bool {
 	if isInstalled := isInstalled(log); !isInstalled {
