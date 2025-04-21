@@ -25,7 +25,8 @@ func NewConfig(log *logger.Context) *Config {
 }
 
 func (c *Config) ExistIncompatible() bool {
-	return c.findKey("wsl2", "kernel")
+	_, ok := c.GetValue("wsl2", "kernel")
+	return ok
 }
 
 func (c *Config) Fix() error {
@@ -56,17 +57,17 @@ func (c *Config) Open() error {
 	return nil
 }
 
-func (c *Config) findKey(expectSection string, expectKey string) bool {
+func (c *Config) GetValue(expectSection string, expectKey string) (string, bool) {
 	wslConfigPath, ok := c.path()
 	if !ok {
 		c.log.Info("WSL config file not found")
-		return false
+		return "", false
 	}
 
 	file, err := os.Open(wslConfigPath)
 	if err != nil {
 		c.log.Warnf("Failed to open .wslconfig file: %v", err)
-		return false
+		return "", false
 	}
 	defer file.Close()
 
@@ -107,16 +108,16 @@ func (c *Config) findKey(expectSection string, expectKey string) bool {
 		}
 
 		c.log.Infof("Find %s key in .wslconfig: %s", expectKey, line)
-		return true
+		return val, true
 	}
 
 	if err := scanner.Err(); err != nil {
 		c.log.Warnf("Failed to scan .wslconfig: %v", err)
-		return false
+		return "", false
 	}
 
 	c.log.Infof("No %s key config found in WSL config file: %s", expectKey, wslConfigPath)
-	return false
+	return "", false
 }
 
 func (c *Config) commentKey(expectKey string) error {
