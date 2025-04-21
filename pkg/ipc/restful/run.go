@@ -75,14 +75,23 @@ func (r *routerRun) mux() http.Handler {
 }
 
 type infoResponse struct {
-	PodmanHost string `json:"podmanHost"`
-	PodmanPort int    `json:"podmanPort"`
+	PodmanHost   string `json:"podmanHost"`
+	PodmanPort   int    `json:"podmanPort"`
+	HostEndpoint string `json:"hostEndpoint"`
 }
 
 func (r *routerRun) info(w http.ResponseWriter, req *http.Request) {
+	he, err := wsl.HostEndpoint(r.log, r.opt.DistroName)
+	if err != nil {
+		r.log.Warnf("Failed to get host endpoint: %v", err)
+		http.Error(w, "failed to get host endpoint", http.StatusInternalServerError)
+		return
+	}
+
 	_ = json.NewEncoder(w).Encode(&infoResponse{
-		PodmanHost: "127.0.0.1",
-		PodmanPort: r.opt.PodmanPort,
+		PodmanHost:   "127.0.0.1",
+		PodmanPort:   r.opt.PodmanPort,
+		HostEndpoint: he,
 	})
 }
 
