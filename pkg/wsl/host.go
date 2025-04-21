@@ -33,16 +33,7 @@ func HostEndpoint(log *logger.Context, name string) (string, error) {
 	return _hostEndpoint, nil
 }
 
-func isMirroredNetwork(log *logger.Context) bool {
-	val, _ := NewConfig(log).GetValue("wsl2", "networkingMode")
-	return val == "mirrored"
-}
-
 func getHostEndpoint(log *logger.Context, name string) (string, error) {
-	if isMirroredNetwork(log) {
-		return "localhost", nil
-	}
-
 	// TODO(@BlackHole1): improve wslInvoke
 	newArgs := []string{"-d", name, "/bin/sh", "-c", "ip route  | grep '^default' | awk '{print $3}'"}
 	cmd := util.SilentCmd(Find(), newArgs...)
