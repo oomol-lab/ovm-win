@@ -106,7 +106,7 @@ func SafeSyncDisk(log *logger.Context, distroName string) error {
 
 func MountVHDX(log *logger.Context, path string) error {
 	if _, err := wslExec(log, "--mount", "--bare", "--vhd", path); err != nil {
-		if strings.Contains(err.Error(), "MountVhd/WSL_E_USER_VHD_ALREADY_ATTACHED") {
+		if strings.Contains(err.Error(), "WSL_E_USER_VHD_ALREADY_ATTACHED") {
 			log.Infof("VHDX already mounted: %s", path)
 			return nil
 		}
@@ -122,7 +122,7 @@ func UmountVHDX(log *logger.Context, path string) error {
 	}
 
 	if _, err := wslExec(log, "--unmount", path); err != nil {
-		if strings.Contains(err.Error(), "DetachDisk/ERROR_FILE_NOT_FOUND") {
+		if strings.Contains(err.Error(), "ERROR_FILE_NOT_FOUND") {
 			log.Infof("VHDX already unmounted: %s", path)
 			return nil
 		}
@@ -134,10 +134,10 @@ func UmountVHDX(log *logger.Context, path string) error {
 
 func MoveDistro(log *logger.Context, distroName, newPath string) error {
 	if _, err := wslExec(log, "--manage", distroName, "--move", newPath); err != nil {
-		if strings.Contains(err.Error(), "MoveDistro/ERROR_SHARING_VIOLATION") {
+		if strings.Contains(err.Error(), "ERROR_SHARING_VIOLATION") {
 			return ErrSharingViolation
 		}
-		if strings.Contains(err.Error(), "MoveDistro/WSL_E_DISTRO_NOT_STOPPED") {
+		if strings.Contains(err.Error(), "WSL_E_DISTRO_NOT_STOPPED") {
 			return ErrSharingViolation
 		}
 
