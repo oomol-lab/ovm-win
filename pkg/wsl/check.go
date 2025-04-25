@@ -126,12 +126,13 @@ func checkWSLConfig(ctx context.Context, opt *types.InitOpt) bool {
 		log.Warn("Failed to get OVM config path")
 	}
 
-	if exist := NewConfig(log).ExistIncompatible(); !exist {
+	incompatibleKeys := NewConfig(log).ExistIncompatible()
+	if len(incompatibleKeys) == 0 {
 		log.Info("WSL2 config is compatible")
 		return true
 	}
 
-	event.NotifyInit(event.WSLConfigMaybeIncompatible)
+	event.NotifyInit(event.WSLConfigMaybeIncompatible, strings.Join(incompatibleKeys, ","))
 	opt.CanFixWSLConfig = true
 
 	select {

@@ -24,13 +24,28 @@ func NewConfig(log *logger.Context) *Config {
 	return &Config{log: log}
 }
 
-func (c *Config) ExistIncompatible() bool {
-	_, ok := c.GetValue("wsl2", "kernel")
-	return ok
+func (c *Config) ExistIncompatible() []string {
+	var r []string
+	if _, ok := c.GetValue("wsl2", "kernel"); ok {
+		r = append(r, "kernel")
+	}
+
+	if v, ok := c.GetValue("wsl2", "localhostForwarding"); ok && v == "false" {
+		r = append(r, "localhostForwarding")
+	}
+
+	return r
 }
 
 func (c *Config) Fix() error {
-	return c.commentKey("kernel")
+	if err := c.commentKey("kernel"); err != nil {
+		return err
+	}
+	if err := c.commentKey("localhostforwarding"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *Config) Open() error {
@@ -71,6 +86,7 @@ func (c *Config) GetValue(expectSection string, expectKey string) (string, bool)
 	}
 	defer file.Close()
 
+	expectKey = strings.ToLower(expectKey)
 	section := ""
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
