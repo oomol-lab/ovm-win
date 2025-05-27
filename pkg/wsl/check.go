@@ -28,7 +28,11 @@ func Check(ctx context.Context, opt *types.InitOpt) {
 		return
 	}
 
-	if ok := checkBIOS(ctx, opt); !ok {
+	if ok := checkBIOS(opt); !ok {
+		opt.Logger.Info("Virtualization is not supported")
+		event.NotifyInit(event.NotSupportVirtualization)
+
+		<-ctx.Done()
 		return
 	}
 
@@ -77,28 +81,38 @@ func checkVersion(ctx context.Context, opt *types.InitOpt) bool {
 	}
 }
 
-func checkBIOS(ctx context.Context, opt *types.InitOpt) bool {
+func checkBIOS(opt *types.InitOpt) bool {
 	log := opt.Logger
 
 	if list, err := getAllWSLDistros(log, false); err == nil && len(list) != 0 {
-		log.Info("Exist WSL distros, BIOS may support virtualization")
+		var first string
+		for key := range list {
+			first = key
+			break
+		}
+
+		flag := "TEST_PASS"
+
+		var out string
+		_ = Exec(log).SetAllOut(&out).SetDistro(first).Run("echo", flag)
+		if strings.Contains(out, flag) {
+			log.Info("Exist WSL distros and succeeded invoke, BIOS support virtualization")
+			return true
+		}
+
+		if strings.Contains(out, "HCS_E_HYPERV_NOT_INSTALLED") {
+			log.Info("execute wsl command failed, BIOS not support virtualization")
+			return false
+		}
+	}
+
+	recordCPUFeature(log)
+
+	if tryImportTestDistro(log) {
+		log.Info("Test distro imported successfully, maybe BIOS support virtualization")
 		return true
 	}
 
-	if isSupportedVirtualization(log) {
-		log.Info("Virtualization is supported")
-		return true
-	}
-
-	if isWillReportExpectedErrorInMountVHDX(log, opt) {
-		log.Info("Expected error in mount vhdx, BIOS may support virtualization")
-		return true
-	}
-
-	log.Info("Virtualization is not supported")
-	event.NotifyInit(event.NotSupportVirtualization)
-
-	<-ctx.Done()
 	return false
 }
 
@@ -164,7 +178,7 @@ func SkipConfigCheck(opt *types.InitOpt) {
 	}
 }
 
-func isSupportedVirtualization(log *logger.Context) bool {
+func recordCPUFeature(log *logger.Context) {
 	vf, slat := sys.IsSupportedVirtualization()
 	if !slat {
 		log.Warn("SLAT is not supported")
@@ -173,35 +187,38 @@ func isSupportedVirtualization(log *logger.Context) bool {
 	if !vf {
 		log.Warn("VT-x is not supported")
 	}
-
-	// If the CPU does not support SLAT, WSL2 cannot be started (but WSL1 can be started).
-	// In modern CPUs, almost all CPUs support SLAT.
-	// It is not possible to strictly determine this through `vf && slat`, because in VMware, SLAT is always false (even if "Virtualize Intel VT-x/EPT or AMD-V/RVI" is checked).
-	// See:
-	// 		https://github.com/microsoft/WSL/issues/4709
-	// 		https://www.reddit.com/r/bashonubuntuonwindows/comments/izf4qp/cpus_without_slat_capability_cant_run_wsl_2/
-	return vf
 }
 
-func isWillReportExpectedErrorInMountVHDX(log *logger.Context, opt *types.InitOpt) bool {
-	tempVhdx := filepath.Join(os.TempDir(), fmt.Sprintf("ovm-win-%s-%s.vhdx", opt.Name, util.RandomString(5)))
+func tryImportTestDistro(log *logger.Context) bool {
+	random := fmt.Sprintf("ovm-test-distro-%s", util.RandomString(5))
+	tempDir := filepath.Join(os.TempDir(), random)
 	defer func() {
-		_ = os.RemoveAll(tempVhdx)
+		_ = os.RemoveAll(tempDir)
 	}()
 
-	_, err := wslExec(log, "--mount", "--bare", "--vhd", tempVhdx)
-	if err == nil {
-		_, _ = wslExec(log, "--unmount", tempVhdx)
-		log.Warnf("Unexpected loading succeeded; WSL may have modified the mechanism. In this case, we believe there is no issue")
+	target := filepath.Join(tempDir, "target")
+	emptyTar := filepath.Join(tempDir, "empty.tar")
+
+	if err := os.MkdirAll(target, 0755); err != nil {
+		log.Warnf("Failed to create target directory: %v", err)
 		return true
 	}
 
-	if strings.Contains(err.Error(), "WSL_E_WSL2_NEEDED") {
-		log.Warn("Mount vhdx failed, BIOS may not support virtualization")
+	if err := os.WriteFile(emptyTar, []byte{}, 0644); err != nil {
+		log.Warnf("Failed to create empty tar file: %v", err)
+		return true
+	}
+
+	var out string
+	_ = Exec(log).SetAllOut(&out).Run("--import", random, target, emptyTar, "--version", "2")
+	if strings.Contains(out, "HCS_E_HYPERV_NOT_INSTALLED") {
+		_ = log.Errorf("Import test distro failed, BIOS not support virtualization")
 		return false
 	}
 
-	log.Infof("Mounting vhdx results in an expected error: %v", err)
+	if err := Exec(log).Run("--unregister", random); err != nil {
+		log.Warnf("Failed to unregister test distro: %v", err)
+	}
 
 	return true
 }
