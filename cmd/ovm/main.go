@@ -64,12 +64,7 @@ func cmd() error {
 					return initCtx.Setup()
 				},
 				Action: func(ctx context.Context, command *cli.Command) (err error) {
-					if err = initCtx.Start(); err != nil {
-						event.NotifyInit(event.InitError, err.Error())
-					} else {
-						event.NotifyInit(event.InitSuccess)
-					}
-					return
+					return initCtx.Start()
 				},
 			},
 			{
@@ -95,10 +90,7 @@ func cmd() error {
 					return runCtx.Setup()
 				},
 				Action: func(ctx context.Context, command *cli.Command) (err error) {
-					if err = runCtx.Start(); err != nil {
-						event.NotifyRun(event.RunError, err.Error())
-					}
-					return
+					return runCtx.Start()
 				},
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -195,14 +187,26 @@ func cmd() error {
 	return command.Run(context.Background(), os.Args)
 }
 
+// TODO: Improve it!
 func main() {
 	var log *logger.Context
 	err := cmd()
 	switch {
 	case initCtx != nil:
+		if err != nil {
+			event.NotifyInit(event.InitError, err.Error())
+		} else {
+			event.NotifyInit(event.InitSuccess)
+		}
+
 		log = initCtx.Logger
 		event.NotifyInit(event.InitExit)
+
 	case runCtx != nil:
+		if err != nil {
+			event.NotifyRun(event.RunError, err.Error())
+		}
+
 		log = runCtx.Logger
 		event.NotifyRun(event.RunExit)
 	case migrateCtx != nil:
