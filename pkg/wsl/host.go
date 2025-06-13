@@ -4,20 +4,22 @@
 package wsl
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/oomol-lab/ovm-win/pkg/logger"
-	"github.com/oomol-lab/ovm-win/pkg/util"
 )
 
 var (
+	hostMux       sync.Mutex
 	_hostEndpoint string
 )
 
 func HostEndpoint(log *logger.Context, name string) (string, error) {
-	// TODO(@BlackHole1): getHostEndpoint may be slow, so it needs to be thread-safe here
+	hostMux.Lock()
+	defer hostMux.Unlock()
+
 	if _hostEndpoint != "" {
 		return _hostEndpoint, nil
 	}
@@ -34,21 +36,28 @@ func HostEndpoint(log *logger.Context, name string) (string, error) {
 }
 
 func getHostEndpoint(log *logger.Context, name string) (string, error) {
-	// TODO(@BlackHole1): improve wslInvoke
-	newArgs := []string{"-d", name, "/bin/sh", "-c", "ip route  | grep '^default' | awk '{print $3}'"}
-	cmd := util.SilentCmd(Find(), newArgs...)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	cmd.Env = []string{"WSL_UTF8=1"}
-
-	cmdStr := fmt.Sprintf("%s %s", Find(), strings.Join(newArgs, " "))
-
-	log.Infof("Running command in distro: %s", cmdStr)
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("failed to run command in distro: %w, %s", err, stderr.String())
+	var out string
+	if err := Exec(log).SetDistro(name).SetStdout(&out).Run("ip", "route"); err != nil {
+		return "", fmt.Errorf("failed to get host endpoint: %w", err)
 	}
 
-	return strings.TrimSpace(stdout.String()), nil
+	log.Infof("get host endpoint output: %s", out)
+
+	ip := ""
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	for _, l := range lines {
+		if strings.HasPrefix(strings.TrimSpace(l), "default") {
+			arr := strings.Fields(l)
+			if len(arr) >= 3 {
+				ip = arr[2]
+				break
+			}
+		}
+	}
+
+	if ip == "" {
+		return "", fmt.Errorf("failed to parse host endpoint from output: %s", out)
+	}
+
+	return ip, nil
 }
