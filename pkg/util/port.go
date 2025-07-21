@@ -10,7 +10,7 @@ import (
 )
 
 func portOccupied(port int) error {
-	ln, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+	ln, err := net.Listen("tcp4", ":"+strconv.Itoa(port))
 	if err != nil {
 		return fmt.Errorf("port %d is occupied, %v", port, err)
 	}
