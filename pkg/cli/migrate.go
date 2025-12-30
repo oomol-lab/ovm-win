@@ -146,6 +146,10 @@ func (m *MigrateContext) Start() error {
 		log.Warnf("Failed to remove old versions.json: %v", err)
 	}
 
+	if err := os.RemoveAll(oldSourceCodeDiskPath); err != nil {
+		log.Warnf("Failed to remove old sourcecode.vhdx: %v", err)
+	}
+
 	log.Infof("Success to migrate, from %s to %s", m.OldImageDir, m.NewImageDir)
 
 	return nil
