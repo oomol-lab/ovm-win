@@ -4,7 +4,13 @@
 package vhdx
 
 import (
+	"archive/zip"
+	"bytes"
+	_ "embed"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"syscall"
 )
 import "github.com/Microsoft/go-winio/vhd"
@@ -35,4 +41,52 @@ func Create(path string, maxSizeInBytes uint64) error {
 		return fmt.Errorf("failed to create virtual disk: %w", err)
 	}
 	return syscall.CloseHandle(handle)
+}
+
+//go:embed sourcecode.vhdx.zip
+var sourceCodeZip []byte
+
+func ExtractSourceCode(targetPath string) error {
+	reader, err := zip.NewReader(bytes.NewReader(sourceCodeZip), int64(len(sourceCodeZip)))
+	if err != nil {
+		return fmt.Errorf("open embedded zip: %w", err)
+	}
+
+	var targetFile *zip.File
+	for _, f := range reader.File {
+		// Only extract the file named sourcecode.vhdx
+		if f.Name == "sourcecode.vhdx" {
+			targetFile = f
+			break
+		}
+	}
+
+	if targetFile == nil {
+		return fmt.Errorf("sourcecode.vhdx not found in zip")
+	}
+
+	sourceCodeDiskPath := filepath.Join(targetPath, targetFile.Name)
+
+	if err := os.MkdirAll(filepath.Dir(sourceCodeDiskPath), 0755); err != nil {
+		return fmt.Errorf("create directory for vhdx: %w", err)
+	}
+
+	rc, err := targetFile.Open()
+	if err != nil {
+		return fmt.Errorf("open zip file entry: %w", err)
+	}
+	defer rc.Close()
+
+	out, err := os.OpenFile(sourceCodeDiskPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("create target file %s: %w", sourceCodeDiskPath, err)
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, rc)
+	if err != nil {
+		return fmt.Errorf("copy content to %s: %w", sourceCodeDiskPath, err)
+	}
+
+	return nil
 }

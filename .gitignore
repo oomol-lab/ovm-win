@@ -9,3 +9,4 @@ $RECYCLE.BIN/
 logs
 
 pkg/winapi/vhdx/*_test.go
+CLAUDE.md
