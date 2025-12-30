@@ -129,7 +129,7 @@ func UmountVHDX(log *logger.Context, paths ...string) error {
 				log.Infof("VHDX already unmounted: %s", path)
 				continue
 			}
-			log.Warnf("Failed to unmount VHDX: %s", path)
+			return err
 		}
 	}
 

@@ -58,7 +58,7 @@ func (c *RunContext) Setup() error {
 		return fmt.Errorf("failed to get port: %w", err)
 	}
 
-	if err := c.SetupSourceCodeDisk(); err != nil {
+	if err := c.setupSourceCodeDisk(); err != nil {
 		return fmt.Errorf("failed to setup source code disk: %w", err)
 	}
 
@@ -160,15 +160,12 @@ func (c *RunContext) setupPort() error {
 	return nil
 }
 
-func (c *RunContext) SetupSourceCodeDisk() error {
-	p := filepath.Join(c.ImageDir, "source_code.vhdx")
-	// if source_code.vhdx already exists, skip
-	_, err := os.Stat(p)
-	if err == nil {
+func (c *RunContext) setupSourceCodeDisk() error {
+	if _, err := os.Stat(filepath.Join(c.ImageDir, "source_code.vhdx")); err == nil {
 		c.Logger.Info("source code disk already exists")
 		return nil
 	}
 
 	c.Logger.Info("setup source code disk")
-	return vhdx.ExtractSourceCode(p)
+	return vhdx.ExtractSourceCode(c.ImageDir)
 }

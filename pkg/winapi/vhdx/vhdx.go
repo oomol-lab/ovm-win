@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"syscall"
 )
 import "github.com/Microsoft/go-winio/vhd"
@@ -47,48 +46,47 @@ func Create(path string, maxSizeInBytes uint64) error {
 //go:embed sourcecode.vhdx.zip
 var sourceCodeZip []byte
 
-func ExtractSourceCode(path string) error {
+func ExtractSourceCode(targetPath string) error {
 	reader, err := zip.NewReader(bytes.NewReader(sourceCodeZip), int64(len(sourceCodeZip)))
 	if err != nil {
 		return fmt.Errorf("open embedded zip: %w", err)
 	}
 
+	var targetFile *zip.File
 	for _, f := range reader.File {
-		if err := extractFile(f, path); err != nil {
-			return fmt.Errorf("extract %s: %w", f.Name, err)
+		// Only extract the file named sourcecode.vhdx
+		if f.Name == "sourcecode.vhdx" {
+			targetFile = f
+			break
 		}
 	}
-	return nil
-}
 
-func extractFile(f *zip.File, destDir string) error {
-	fpath := filepath.Join(destDir, f.Name)
-
-	rel, err := filepath.Rel(destDir, fpath)
-	if err != nil || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || rel == ".." {
-		return fmt.Errorf("illegal file path: %s", f.Name)
+	if targetFile == nil {
+		return fmt.Errorf("sourcecode.vhdx not found in zip")
 	}
 
-	if f.FileInfo().IsDir() {
-		return os.MkdirAll(fpath, f.Mode())
+	sourceCodeDiskPath := filepath.Join(targetPath, targetFile.Name)
+
+	if err := os.MkdirAll(filepath.Dir(sourceCodeDiskPath), 0755); err != nil {
+		return fmt.Errorf("create directory for vhdx: %w", err)
 	}
 
-	if err := os.MkdirAll(filepath.Dir(fpath), 0755); err != nil {
-		return err
-	}
-
-	rc, err := f.Open()
+	rc, err := targetFile.Open()
 	if err != nil {
-		return err
+		return fmt.Errorf("open zip file entry: %w", err)
 	}
 	defer rc.Close()
 
-	out, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+	out, err := os.OpenFile(sourceCodeDiskPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		return err
+		return fmt.Errorf("create target file %s: %w", sourceCodeDiskPath, err)
 	}
 	defer out.Close()
 
 	_, err = io.Copy(out, rc)
-	return err
+	if err != nil {
+		return fmt.Errorf("copy content to %s: %w", sourceCodeDiskPath, err)
+	}
+
+	return nil
 }
