@@ -179,7 +179,7 @@ func Launch(ctx context.Context, log *logger.Context, opt *types.RunOpt) error {
 	event.NotifyRun(event.Starting)
 
 	dataPath := filepath.Join(opt.ImageDir, "data.vhdx")
-	sourceCodeDiskPath := filepath.Join(opt.ImageDir, "source_code.vhdx")
+	sourceCodeDiskPath := filepath.Join(opt.ImageDir, "sourcecode.vhdx")
 	if err := MountVHDX(log, dataPath, sourceCodeDiskPath); err != nil {
 		return fmt.Errorf("failed to mount vhdx disk: %w", err)
 	}

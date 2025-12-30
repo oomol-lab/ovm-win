@@ -161,7 +161,7 @@ func (c *RunContext) setupPort() error {
 }
 
 func (c *RunContext) setupSourceCodeDisk() error {
-	if _, err := os.Stat(filepath.Join(c.ImageDir, "source_code.vhdx")); err == nil {
+	if _, err := os.Stat(filepath.Join(c.ImageDir, "sourcecode.vhdx")); err == nil {
 		c.Logger.Info("source code disk already exists")
 		return nil
 	}
