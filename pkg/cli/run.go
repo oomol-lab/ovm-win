@@ -16,6 +16,7 @@ import (
 	"github.com/oomol-lab/ovm-win/pkg/types"
 	"github.com/oomol-lab/ovm-win/pkg/update"
 	"github.com/oomol-lab/ovm-win/pkg/util"
+	"github.com/oomol-lab/ovm-win/pkg/winapi/vhdx"
 	"github.com/oomol-lab/ovm-win/pkg/wsl"
 	"golang.org/x/sync/errgroup"
 )
@@ -55,6 +56,10 @@ func (c *RunContext) Setup() error {
 
 	if err := c.setupPort(); err != nil {
 		return fmt.Errorf("failed to get port: %w", err)
+	}
+
+	if err := c.SetupSourceCodeDisk(); err != nil {
+		return fmt.Errorf("failed to setup source code disk: %w", err)
 	}
 
 	return nil
@@ -153,4 +158,17 @@ func (c *RunContext) setupPort() error {
 	c.PodmanPort = p
 
 	return nil
+}
+
+func (c *RunContext) SetupSourceCodeDisk() error {
+	p := filepath.Join(c.ImageDir, "source_code.vhdx")
+	// if source_code.vhdx already exists, skip
+	_, err := os.Stat(p)
+	if err == nil {
+		c.Logger.Info("source code disk already exists")
+		return nil
+	}
+
+	c.Logger.Info("setup source code disk")
+	return vhdx.ExtractSourceCode(p)
 }

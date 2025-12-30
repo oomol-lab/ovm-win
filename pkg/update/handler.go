@@ -61,9 +61,10 @@ func (c *Context) updateData() error {
 	}
 
 	dataPath := filepath.Join(c.ImageDir, "data.vhdx")
+	sourceCodeDiskPath := filepath.Join(c.ImageDir, "source_code.vhdx")
 
-	log.Infof("Umounting data: %s", dataPath)
-	if err := wsl.UmountVHDX(log, dataPath); err != nil {
+	log.Infof("Umounting data: %s, source code disk: %s", dataPath, sourceCodeDiskPath)
+	if err := wsl.UmountVHDX(log, dataPath, sourceCodeDiskPath); err != nil {
 		return fmt.Errorf("failed to unmount data: %w", err)
 	}
 

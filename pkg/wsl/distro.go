@@ -104,29 +104,33 @@ func SafeSyncDisk(log *logger.Context, distroName string) error {
 	return nil
 }
 
-func MountVHDX(log *logger.Context, path string) error {
-	if _, err := wslExec(log, "--mount", "--bare", "--vhd", path); err != nil {
-		if strings.Contains(err.Error(), "WSL_E_USER_VHD_ALREADY_ATTACHED") {
-			log.Infof("VHDX already mounted: %s", path)
-			return nil
+func MountVHDX(log *logger.Context, paths ...string) error {
+	for _, path := range paths {
+		if _, err := wslExec(log, "--mount", "--bare", "--vhd", path); err != nil {
+			if strings.Contains(err.Error(), "WSL_E_USER_VHD_ALREADY_ATTACHED") {
+				log.Infof("VHDX already mounted: %s", path)
+				continue
+			}
+			return fmt.Errorf("wsl mount %s failed: %w", path, err)
 		}
-		return fmt.Errorf("wsl mount %s failed: %w", path, err)
 	}
 
 	return nil
 }
 
-func UmountVHDX(log *logger.Context, path string) error {
-	if err := util.Exists(path); err != nil && os.IsNotExist(err) {
-		return nil
-	}
-
-	if _, err := wslExec(log, "--unmount", path); err != nil {
-		if strings.Contains(err.Error(), "ERROR_FILE_NOT_FOUND") {
-			log.Infof("VHDX already unmounted: %s", path)
-			return nil
+func UmountVHDX(log *logger.Context, paths ...string) error {
+	for _, path := range paths {
+		if err := util.Exists(path); err != nil && os.IsNotExist(err) {
+			continue
 		}
-		return fmt.Errorf("wsl umount %s failed: %w", path, err)
+
+		if _, err := wslExec(log, "--unmount", path); err != nil {
+			if strings.Contains(err.Error(), "ERROR_FILE_NOT_FOUND") {
+				log.Infof("VHDX already unmounted: %s", path)
+				continue
+			}
+			log.Warnf("Failed to unmount VHDX: %s", path)
+		}
 	}
 
 	return nil
@@ -175,8 +179,9 @@ func Launch(ctx context.Context, log *logger.Context, opt *types.RunOpt) error {
 	event.NotifyRun(event.Starting)
 
 	dataPath := filepath.Join(opt.ImageDir, "data.vhdx")
-	if err := MountVHDX(log, dataPath); err != nil {
-		return fmt.Errorf("failed to mount data.vhdx: %w", err)
+	sourceCodeDiskPath := filepath.Join(opt.ImageDir, "source_code.vhdx")
+	if err := MountVHDX(log, dataPath, sourceCodeDiskPath); err != nil {
+		return fmt.Errorf("failed to mount vhdx disk: %w", err)
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
